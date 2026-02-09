@@ -1,3 +1,5 @@
+> 🇷🇺 Russian translation: [README.ru.md](README.ru.md)
+
 This repository holds the [Uber Go Style Guide](style.md), which documents
 patterns and conventions used in Go code at Uber.
 
