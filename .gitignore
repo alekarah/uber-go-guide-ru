@@ -1,1 +1,14 @@
 /bin
+
+# Editor files
+.vscode/
+.idea/
+.claude/
+CLAUDE.md
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

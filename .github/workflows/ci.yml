@@ -23,7 +23,7 @@ jobs:
         # Check out the pull request repository and branch.
         # If the PR is made from a fork, this will check out the fork.
         # This is necessary for git-auto-commit-action to update PRs made by forks.
-        # See 
+        # See
         # https://github.com/stefanzweifel/git-auto-commit-action#use-in-forks-from-public-repositories
         repository: ${{ github.event.pull_request.head.repo.full_name }}
         ref: ${{ github.head_ref }}
@@ -41,8 +41,16 @@ jobs:
         preface: src/preface.txt
         output: style.md
 
+    - name: Check or update style.ru.md
+      uses: abhinav/stitchmd-action@v1
+      with:
+        mode: ${{ github.event_name == 'pull_request_target' && 'write' || 'check' }}
+        summary: src-ru/SUMMARY.md
+        preface: src-ru/preface.txt
+        output: style.ru.md
+
     - uses: stefanzweifel/git-auto-commit-action@v5
       if: ${{ github.event_name == 'pull_request_target' }}
       with:
-        file_pattern: style.md
-        commit_message: 'Auto-update style.md'
+        file_pattern: 'style.md style.ru.md'
+        commit_message: 'Auto-update style.md and style.ru.md'
