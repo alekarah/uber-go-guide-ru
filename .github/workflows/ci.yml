@@ -31,12 +31,7 @@ jobs:
     - name: Check or update style.md
       uses: abhinav/stitchmd-action@v1
       with:
-        # For pull requests, run in 'write' mode so that edits made
-        # directly in the GitHub UI get propagated to style.md
-        # without a local checkout.
-        #
-        # Otherwise, run in 'check' mode to fail CI if style.md is out-of-date.
-        mode: ${{ github.event_name == 'pull_request_target' && 'write' || 'check' }}
+        mode: write
         summary: src/SUMMARY.md
         preface: src/preface.txt
         output: style.md
@@ -44,13 +39,12 @@ jobs:
     - name: Check or update style.ru.md
       uses: abhinav/stitchmd-action@v1
       with:
-        mode: ${{ github.event_name == 'pull_request_target' && 'write' || 'check' }}
+        mode: write
         summary: src-ru/SUMMARY.md
         preface: src-ru/preface.txt
         output: style.ru.md
 
     - uses: stefanzweifel/git-auto-commit-action@v5
-      if: ${{ github.event_name == 'pull_request_target' }}
       with:
         file_pattern: 'style.md style.ru.md'
         commit_message: 'Auto-update style.md and style.ru.md'
