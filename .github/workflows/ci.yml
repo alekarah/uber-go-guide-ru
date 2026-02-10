@@ -36,15 +36,7 @@ jobs:
         preface: src/preface.txt
         output: style.md
 
-    - name: Check or update style.ru.md
-      uses: abhinav/stitchmd-action@v1
-      with:
-        mode: write
-        summary: src-ru/SUMMARY.md
-        preface: src-ru/preface.txt
-        output: style.ru.md
-
     - uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        file_pattern: 'style.md style.ru.md'
-        commit_message: 'Auto-update style.md and style.ru.md'
+        file_pattern: 'style.md'
+        commit_message: 'Auto-update style.md'

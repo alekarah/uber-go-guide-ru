@@ -1,37 +1,26 @@
-# Introduction
+# Введение
 
-Styles are the conventions that govern our code. The term style is a bit of a
-misnomer, since these conventions cover far more than just source file
-formatting—gofmt handles that for us.
+Стиль — это соглашения, которые определяют наш код. Термин «стиль» не вполне точен, поскольку эти соглашения охватывают гораздо больше, чем просто форматирование исходных файлов — за это отвечает `gofmt`.
 
-The goal of this guide is to manage this complexity by describing in detail the
-Dos and Don'ts of writing Go code at Uber. These rules exist to keep the code
-base manageable while still allowing engineers to use Go language features
-productively.
+Цель данного руководства — управлять этой сложностью, подробно описывая правила и антипаттерны написания Go-кода в Uber. Эти правила существуют для того, чтобы кодовая база оставалась управляемой, и при этом позволяли разработчикам продуктивно использовать возможности языка Go.
 
-This guide was originally created by [Prashant Varanasi] and [Simon Newton] as
-a way to bring some colleagues up to speed with using Go. Over the years it has
-been amended based on feedback from others.
+Это руководство было изначально создано [Prashant Varanasi] и [Simon Newton] как способ помочь коллегам быстрее освоить Go. С годами оно дорабатывалось на основе отзывов других разработчиков.
 
   [Prashant Varanasi]: https://github.com/prashantv
   [Simon Newton]: https://github.com/nomis52
 
-This documents idiomatic conventions in Go code that we follow at Uber. A lot
-of these are general guidelines for Go, while others extend upon external
-resources:
+В этом документе описаны идиоматичные соглашения в Go-коде, которым мы следуем в Uber. Многие из них являются общими рекомендациями для Go, в то время как другие дополняют внешние ресурсы:
 
 1. [Effective Go](https://go.dev/doc/effective_go)
 2. [Go Common Mistakes](https://go.dev/wiki/CommonMistakes)
 3. [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
 
-We aim for the code samples to be accurate for the two most recent minor versions
-of Go [releases](https://go.dev/doc/devel/release).
+Мы стремимся к тому, чтобы примеры кода были корректными для двух последних минорных версий [релизов](https://go.dev/doc/devel/release) Go.
 
-All code should be error-free when run through `golint` and `go vet`. We
-recommend setting up your editor to:
+Весь код должен выполняться без ошибок при запуске `golint` и `go vet`. Мы рекомендуем настроить ваш редактор так, чтобы:
 
-- Run `goimports` on save
-- Run `golint` and `go vet` to check for errors
+- Запускать `goimports` при сохранении
+- Запускать `golint` и `go vet` для проверки ошибок
 
-You can find information in editor support for Go tools here:
+Информацию о поддержке редакторов для инструментов Go можно найти здесь:
 <https://go.dev/wiki/IDEsAndTextEditorPlugins>

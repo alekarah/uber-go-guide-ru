@@ -1,32 +1,76 @@
-> 🇷🇺 Russian translation: [README.ru.md](README.ru.md)
+# Uber Go Style Guide — Русская версия
 
-This repository holds the [Uber Go Style Guide](style.md), which documents
-patterns and conventions used in Go code at Uber.
+> 🇷🇺 **Актуальный и поддерживаемый** русский перевод официального Uber Go Style Guide.
+>
+> 📌 Перевод основан на версии оригинала: [uber-go/guide](https://github.com/uber-go/guide) @ `e2c8a0ed`
 
-## Style Guide
+---
 
-See [Uber Go Style Guide](style.md) for the style guide.
+## 📖 О проекте
 
-## Translations
+Это современный русский перевод [Uber Go Style Guide](https://github.com/uber-go/guide) — авторитетного руководства по написанию идиоматичного Go-кода от команды Uber.
 
-We are aware of the following translations of this guide by the Go community.
+### Зачем ещё один перевод?
 
-- **中文翻译** (Chinese): [xxjwxc/uber_go_guide_cn](https://github.com/xxjwxc/uber_go_guide_cn)
-- **繁體中文** （Traditional Chinese）：[ianchen0119/uber_go_guide_tw](https://github.com/ianchen0119/uber_go_guide_tw)
-- **한국어 번역** (Korean): [TangoEnSkai/uber-go-style-guide-kr](https://github.com/TangoEnSkai/uber-go-style-guide-kr)
-- **日本語訳** (Japanese): [knsh14/uber-style-guide-ja](https://github.com/knsh14/uber-style-guide-ja)
-- **Traducción al Español** (Spanish): [friendsofgo/uber-go-guide-es](https://github.com/friendsofgo/uber-go-guide-es)
-- **แปลภาษาไทย** (Thai): [pallat/uber-go-style-guide-th](https://github.com/pallat/uber-go-style-guide-th)
-- **Tradução em português** (Portuguese): [lucassscaravelli/uber-go-guide-pt](https://github.com/lucassscaravelli/uber-go-guide-pt)
-- **Tradução em português** (Portuguese BR): [alcir-junior-caju/uber-go-style-guide-pt-br](https://github.com/alcir-junior-caju/uber-go-style-guide-pt-br)
-- **Tłumaczenie polskie** (Polish): [DamianSkrzypczak/uber-go-guide-pl](https://github.com/DamianSkrzypczak/uber-go-guide-pl)
-- **Русский перевод** (Russian): [sau00/uber-go-guide-ru](https://github.com/sau00/uber-go-guide-ru)
-- **Français** (French): [rm3l/uber-go-style-guide-fr](https://github.com/rm3l/uber-go-style-guide-fr)
-- **Türkçe** (Turkish): [ksckaan1/uber-go-style-guide-tr](https://github.com/ksckaan1/uber-go-style-guide-tr)
-- **Український переклад** (Ukrainian): [vorobeyme/uber-go-style-guide-uk](https://github.com/vorobeyme/uber-go-style-guide-uk)
-- **ترجمه فارسی** (Persian): [jamalkaksouri/uber-go-guide-ir](https://github.com/jamalkaksouri/uber-go-guide-ir)
-- **Tiếng việt** (Vietnamese): [nc-minh/uber-go-guide-vi](https://github.com/nc-minh/uber-go-guide-vi)
-- **العربية** (Arabic): [anqorithm/uber-go-guide-ar](https://github.com/anqorithm/uber-go-guide-ar)
-- **Bahasa Indonesia** (Indonesian): [stanleydv12/uber-go-guide-id](https://github.com/stanleydv12/uber-go-guide-id)
+Существующий русский перевод ([sau00/uber-go-guide-ru](https://github.com/sau00/uber-go-guide-ru)) не обновлялся с 22 ноября 2020 года. За более чем 5 лет:
+- В оригинальное руководство добавлено **84 коммита**
+- Появились новые разделы:
+  - Управление жизненным циклом горутин (2022)
+  - Обработка ошибок только один раз (2023)
+  - Табличные тесты с усложнённой логикой (2023)
+  - Теги полей в маршалируемых структурах (2022)
+- Обновлены рекомендации по работе с ошибками (`%w` vs `%v`, errors.Is/As)
+- Обновлены рекомендации по линтингу (golint → revive)
+- Добавлены примеры для современных версий Go (1.22+)
 
-If you have a translation, feel free to submit a PR adding it to the list.
+Этот перевод создаётся с целью:
+- ✅ Поддерживать актуальность с оригиналом
+- ✅ Использовать современную терминологию русского Go-сообщества
+- ✅ Обеспечить высокое качество перевода
+
+---
+
+## 📚 Документация
+
+**[📖 style.md](style.md)** — полное руководство по стилю Go от Uber (русский, автогенерируется)
+
+### Структура проекта
+
+```
+uber-go-guide-ru/
+├── src/              # Переведённые файлы (RU)
+│   ├── SUMMARY.md    # Оглавление
+│   ├── intro.md      # Введение
+│   ├── panic.md      # Не используйте panic
+│   └── ...           # Остальные разделы
+├── style.md          # Собранное руководство (автогенерируется CI)
+└── README.md         # Этот файл
+```
+
+GitHub Actions автоматически собирает файл `style.md` из всех разделов в директории `src/` при каждом push.
+
+---
+
+## 🚀 Статус перевода
+
+⏳ Перевод в процессе. Актуальный статус: [TRANSLATION_PROGRESS.md](TRANSLATION_PROGRESS.md)
+
+---
+
+## 📝 Лицензия
+
+Этот перевод распространяется под той же лицензией, что и оригинальное руководство.
+
+Оригинал: © Uber Technologies, Inc.
+
+---
+
+## 🔗 Ссылки
+
+- 📘 **Оригинальное руководство:** [uber-go/guide](https://github.com/uber-go/guide)
+- 🇷🇺 **Этот перевод:** [alekarah/uber-go-guide-ru](https://github.com/alekarah/uber-go-guide-ru)
+- 💬 **Обсуждения и вопросы:** [Issues](https://github.com/alekarah/uber-go-guide-ru/issues)
+
+---
+
+**Поддержите проект:** Поставьте ⭐️ если этот перевод оказался полезным!
