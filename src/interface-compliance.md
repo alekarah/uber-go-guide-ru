@@ -1,15 +1,13 @@
-# Verify Interface Compliance
+# Проверка соответствия интерфейсу
 
-Verify interface compliance at compile time where appropriate. This includes:
+Проверяйте соответствие интерфейсу во время компиляции, где это уместно. Это включает:
 
-- Exported types that are required to implement specific interfaces as part of
-  their API contract
-- Exported or unexported types that are part of a collection of types
-  implementing the same interface
-- Other cases where violating an interface would break users
+- Экспортируемые типы, которые должны реализовывать определённые интерфейсы как часть их API-контракта
+- Экспортируемые или неэкспортируемые типы, которые являются частью коллекции типов, реализующих один и тот же интерфейс
+- Другие случаи, когда нарушение интерфейса приведёт к проблемам у пользователей
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -48,12 +46,9 @@ func (h *Handler) ServeHTTP(
 </td></tr>
 </tbody></table>
 
-The statement `var _ http.Handler = (*Handler)(nil)` will fail to compile if
-`*Handler` ever stops matching the `http.Handler` interface.
+Выражение `var _ http.Handler = (*Handler)(nil)` не скомпилируется, если `*Handler` когда-либо перестанет соответствовать интерфейсу `http.Handler`.
 
-The right hand side of the assignment should be the zero value of the asserted
-type. This is `nil` for pointer types (like `*Handler`), slices, and maps, and
-an empty struct for struct types.
+Правая часть присваивания должна быть нулевым значением проверяемого типа. Это `nil` для типов-указателей (таких как `*Handler`), слайсов и map, и пустая структура для типов-структур.
 
 ```go
 type LogHandler struct {
