@@ -1,16 +1,14 @@
-# Exit in Main
+# Выход из программы в Main
 
-Go programs use [`os.Exit`] or [`log.Fatal*`] to exit immediately. (Panicking
-is not a good way to exit programs, please [don't panic](panic.md).)
+Go-программы используют [`os.Exit`] или [`log.Fatal*`] для немедленного выхода. (Panic — это не хороший способ выхода из программ, пожалуйста [не используйте panic](panic.md).)
 
   [`os.Exit`]: https://pkg.go.dev/os#Exit
   [`log.Fatal*`]: https://pkg.go.dev/log#Fatal
 
-Call one of `os.Exit` or `log.Fatal*` **only in `main()`**. All other
-functions should return errors to signal failure.
+Вызывайте `os.Exit` или `log.Fatal*` **только в `main()`**. Все остальные функции должны возвращать ошибки для сигнализации о сбое.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -64,13 +62,8 @@ func readFile(path string) (string, error) {
 </td></tr>
 </tbody></table>
 
-Rationale: Programs with multiple functions that exit present a few issues:
+Обоснование: Программы с несколькими функциями, которые выходят из программы, представляют несколько проблем:
 
-- Non-obvious control flow: Any function can exit the program so it becomes
-  difficult to reason about the control flow.
-- Difficult to test: A function that exits the program will also exit the test
-  calling it. This makes the function difficult to test and introduces risk of
-  skipping other tests that have not yet been run by `go test`.
-- Skipped cleanup: When a function exits the program, it skips function calls
-  enqueued with `defer` statements. This adds risk of skipping important
-  cleanup tasks.
+- Неочевидный поток управления: Любая функция может выйти из программы, поэтому становится сложно рассуждать о потоке управления.
+- Сложность тестирования: Функция, которая выходит из программы, также выйдет из теста, вызывающего её. Это усложняет тестирование функции и создаёт риск пропуска других тестов, которые ещё не были запущены `go test`.
+- Пропущенная очистка: Когда функция выходит из программы, она пропускает вызовы функций, поставленные в очередь с помощью выражений `defer`. Это добавляет риск пропуска важных задач очистки.

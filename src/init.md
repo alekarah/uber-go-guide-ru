@@ -1,26 +1,16 @@
-# Avoid `init()`
+# Избегайте `init()`
 
-Avoid `init()` where possible. When `init()` is unavoidable or desirable, code
-should attempt to:
+Избегайте `init()` где это возможно. Когда `init()` неизбежна или желательна, код должен стремиться:
 
-1. Be completely deterministic, regardless of program environment or invocation.
-2. Avoid depending on the ordering or side-effects of other `init()` functions.
-   While `init()` ordering is well-known, code can change, and thus
-   relationships between `init()` functions can make code brittle and
-   error-prone.
-3. Avoid accessing or manipulating global or environment state, such as machine
-   information, environment variables, working directory, program
-   arguments/inputs, etc.
-4. Avoid I/O, including both filesystem, network, and system calls.
+1. Быть полностью детерминированным, независимо от окружения программы или вызова.
+2. Избегать зависимости от порядка или побочных эффектов других функций `init()`. Хотя порядок `init()` хорошо известен, код может измениться, и таким образом отношения между функциями `init()` могут сделать код хрупким и подверженным ошибкам.
+3. Избегать доступа или манипуляции глобальным состоянием или состоянием окружения, такими как информация о машине, переменные окружения, рабочая директория, аргументы/входные данные программы и т.д.
+4. Избегать I/O, включая файловую систему, сеть и системные вызовы.
 
-Code that cannot satisfy these requirements likely belongs as a helper to be
-called as part of `main()` (or elsewhere in a program's lifecycle), or be
-written as part of `main()` itself. In particular, libraries that are intended
-to be used by other programs should take special care to be completely
-deterministic and not perform "init magic".
+Код, который не может удовлетворить этим требованиям, скорее всего должен быть вспомогательной функцией, вызываемой как часть `main()` (или в другом месте жизненного цикла программы), или быть написан как часть самой `main()`. В частности, библиотеки, предназначенные для использования другими программами, должны проявлять особую осторожность, чтобы быть полностью детерминированными и не выполнять "магию init".
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -45,7 +35,7 @@ var _defaultFoo = Foo{
     // ...
 }
 
-// or, better, for testability:
+// или, лучше, для тестируемости:
 
 var _defaultFoo = defaultFoo()
 
@@ -67,10 +57,10 @@ type Config struct {
 var _config Config
 
 func init() {
-    // Bad: based on current directory
+    // Плохо: основано на текущей директории
     cwd, _ := os.Getwd()
 
-    // Bad: I/O
+    // Плохо: I/O
     raw, _ := os.ReadFile(
         path.Join(cwd, "config", "config.yaml"),
     )
@@ -88,12 +78,12 @@ type Config struct {
 
 func loadConfig() Config {
     cwd, err := os.Getwd()
-    // handle err
+    // обрабатываем err
 
     raw, err := os.ReadFile(
         path.Join(cwd, "config", "config.yaml"),
     )
-    // handle err
+    // обрабатываем err
 
     var config Config
     yaml.Unmarshal(raw, &config)
@@ -105,12 +95,10 @@ func loadConfig() Config {
 </td></tr>
 </tbody></table>
 
-Considering the above, some situations in which `init()` may be preferable or
-necessary might include:
+Учитывая вышесказанное, некоторые ситуации, в которых `init()` может быть предпочтительной или необходимой, могут включать:
 
-- Complex expressions that cannot be represented as single assignments.
-- Pluggable hooks, such as `database/sql` dialects, encoding type registries, etc.
-- Optimizations to [Google Cloud Functions] and other forms of deterministic
-  precomputation.
+- Сложные выражения, которые не могут быть представлены как единое присваивание.
+- Подключаемые хуки, такие как диалекты `database/sql`, реестры типов кодирования и т.д.
+- Оптимизации для [Google Cloud Functions] и других форм детерминированных предвычислений.
 
   [Google Cloud Functions]: https://cloud.google.com/functions/docs/bestpractices/tips#use_global_variables_to_reuse_objects_in_future_invocations

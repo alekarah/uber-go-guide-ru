@@ -1,15 +1,13 @@
-# Copy Slices and Maps at Boundaries
+# Копирование слайсов и map на границах
 
-Slices and maps contain pointers to the underlying data so be wary of scenarios
-when they need to be copied.
+Слайсы и map содержат указатели на лежащие в основе данные, поэтому будьте осторожны в сценариях, когда их нужно копировать.
 
-## Receiving Slices and Maps
+## Получение слайсов и map
 
-Keep in mind that users can modify a map or slice you received as an argument
-if you store a reference to it.
+Имейте в виду, что пользователи могут изменить map или слайс, который вы получили в качестве аргумента, если вы сохраните ссылку на него.
 
 <table>
-<thead><tr><th>Bad</th> <th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th> <th>Хорошо</th></tr></thead>
 <tbody>
 <tr>
 <td>
@@ -22,7 +20,7 @@ func (d *Driver) SetTrips(trips []Trip) {
 trips := ...
 d1.SetTrips(trips)
 
-// Did you mean to modify d1.trips?
+// Вы действительно хотели изменить d1.trips?
 trips[0] = ...
 ```
 
@@ -38,7 +36,7 @@ func (d *Driver) SetTrips(trips []Trip) {
 trips := ...
 d1.SetTrips(trips)
 
-// We can now modify trips[0] without affecting d1.trips.
+// Теперь мы можем изменить trips[0], не затрагивая d1.trips.
 trips[0] = ...
 ```
 
@@ -48,13 +46,12 @@ trips[0] = ...
 </tbody>
 </table>
 
-## Returning Slices and Maps
+## Возврат слайсов и map
 
-Similarly, be wary of user modifications to maps or slices exposing internal
-state.
+Аналогично, будьте осторожны с изменениями пользователями map или слайсов, раскрывающими внутреннее состояние.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -64,7 +61,7 @@ type Stats struct {
   counters map[string]int
 }
 
-// Snapshot returns the current stats.
+// Snapshot возвращает текущую статистику.
 func (s *Stats) Snapshot() map[string]int {
   s.mu.Lock()
   defer s.mu.Unlock()
@@ -72,8 +69,8 @@ func (s *Stats) Snapshot() map[string]int {
   return s.counters
 }
 
-// snapshot is no longer protected by the mutex, so any
-// access to the snapshot is subject to data races.
+// snapshot больше не защищён мьютексом, поэтому любой
+// доступ к snapshot подвержен гонкам данных.
 snapshot := stats.Snapshot()
 ```
 
@@ -96,7 +93,7 @@ func (s *Stats) Snapshot() map[string]int {
   return result
 }
 
-// Snapshot is now a copy.
+// Snapshot теперь является копией.
 snapshot := stats.Snapshot()
 ```
 
