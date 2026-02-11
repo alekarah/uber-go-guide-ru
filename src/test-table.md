@@ -1,16 +1,13 @@
-# Test Tables
+# Тестовые таблицы
 
-Table-driven tests with [subtests] can be a helpful pattern for writing tests
-to avoid duplicating code when the core test logic is repetitive.
+Табличные тесты с [подтестами] могут быть полезным паттерном для написания тестов, чтобы избежать дублирования кода, когда основная логика теста повторяется.
 
-If a system under test needs to be tested against _multiple conditions_ where
-certain parts of the inputs and outputs change, a table-driven test should
-be used to reduce redundancy and improve readability.
+Если тестируемую систему нужно тестировать при _множественных условиях_, где определённые части входных и выходных данных изменяются, следует использовать табличный тест для уменьшения избыточности и улучшения читаемости.
 
-  [subtests]: https://go.dev/blog/subtests
+  [подтестами]: https://go.dev/blog/subtests
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -83,12 +80,9 @@ for _, tt := range tests {
 </td></tr>
 </tbody></table>
 
-Test tables make it easier to add context to error messages, reduce duplicate
-logic, and add new test cases.
+Тестовые таблицы упрощают добавление контекста к сообщениям об ошибках, уменьшают дублирующую логику и добавляют новые тестовые случаи.
 
-We follow the convention that the slice of structs is referred to as `tests`
-and each test case `tt`. Further, we encourage explicating the input and output
-values for each test case with `give` and `want` prefixes.
+Мы следуем соглашению, что слайс структур называется `tests`, а каждый тестовый случай — `tt`. Кроме того, мы рекомендуем явно указывать входные и выходные значения для каждого тестового случая с префиксами `give` и `want`.
 
 ```go
 tests := []struct{
@@ -104,49 +98,31 @@ for _, tt := range tests {
 }
 ```
 
-## Avoid Unnecessary Complexity in Table Tests
+## Избегайте излишней сложности в табличных тестах
 
-Table tests can be difficult to read and maintain if the subtests contain conditional
-assertions or other branching logic. Table tests should **NOT** be used whenever
-there needs to be complex or conditional logic inside subtests (i.e. complex logic inside the `for` loop).
+Табличные тесты могут быть сложны для чтения и поддержки, если подтесты содержат условные утверждения или другую логику ветвления. Табличные тесты **НЕ ДОЛЖНЫ** использоваться, когда внутри подтестов требуется сложная или условная логика (т.е. сложная логика внутри цикла `for`).
 
-Large, complex table tests harm readability and maintainability because test readers may
-have difficulty debugging test failures that occur.
+Большие, сложные табличные тесты вредят читаемости и поддерживаемости, потому что читатели тестов могут испытывать трудности с отладкой сбоев тестов.
 
-Table tests like this should be split into either multiple test tables or multiple
-individual `Test...` functions.
+Табличные тесты, подобные этому, должны быть разделены либо на несколько тестовых таблиц, либо на несколько отдельных функций `Test...`.
 
-Some ideals to aim for are:
+Некоторые идеалы, к которым следует стремиться:
 
-* Focus on the narrowest unit of behavior
-* Minimize "test depth", and avoid conditional assertions (see below)
-* Ensure that all table fields are used in all tests
-* Ensure that all test logic runs for all table cases
+* Фокусируйтесь на самой узкой единице поведения
+* Минимизируйте "глубину теста" и избегайте условных утверждений (см. ниже)
+* Убедитесь, что все поля таблицы используются во всех тестах
+* Убедитесь, что вся логика теста выполняется для всех случаев таблицы
 
-In this context, "test depth" means "within a given test, the number of
-successive assertions that require previous assertions to hold" (similar
-to cyclomatic complexity).
-Having "shallower" tests means that there are fewer relationships between
-assertions and, more importantly, that those assertions are less likely
-to be conditional by default.
+В этом контексте "глубина теста" означает "в рамках данного теста, количество последовательных утверждений, которые требуют выполнения предыдущих утверждений" (аналогично цикломатической сложности). Наличие "более мелких" тестов означает, что между утверждениями меньше зависимостей и, что более важно, эти утверждения с меньшей вероятностью будут условными по умолчанию.
 
-Concretely, table tests can become confusing and difficult to read if they use multiple branching
-pathways (e.g. `shouldError`, `expectCall`, etc.), use many `if` statements for
-specific mock expectations (e.g. `shouldCallFoo`), or place functions inside the
-table (e.g. `setupMocks func(*FooMock)`).
+Конкретно, табличные тесты могут стать запутанными и сложными для чтения, если они используют множественные пути ветвления (например, `shouldError`, `expectCall` и т.д.), используют много операторов `if` для конкретных ожиданий моков (например, `shouldCallFoo`) или размещают функции внутри таблицы (например, `setupMocks func(*FooMock)`).
 
-However, when testing behavior that only
-changes based on changed input, it may be preferable to group similar cases
-together in a table test to better illustrate how behavior changes across all inputs,
-rather than splitting otherwise comparable units into separate tests
-and making them harder to compare and contrast.
+Однако при тестировании поведения, которое изменяется только на основе изменённых входных данных, может быть предпочтительнее группировать похожие случаи вместе в табличном тесте, чтобы лучше проиллюстрировать, как поведение изменяется по всем входным данным, вместо того чтобы разделять сравнимые единицы на отдельные тесты и делать их сложнее для сравнения и противопоставления.
 
-If the test body is short and straightforward,
-it's acceptable to have a single branching pathway for success versus failure cases
-with a table field like `shouldErr` to specify error expectations.
+Если тело теста короткое и прямолинейное, допустимо иметь один путь ветвления для случаев успеха против случаев сбоя с полем таблицы вроде `shouldErr` для указания ожиданий ошибок.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -168,7 +144,7 @@ func TestComplicatedTable(t *testing.T) {
 
   for _, tt := range tests {
     t.Run(tt.give, func(t *testing.T) {
-      // setup mocks
+      // настройка моков
       ctrl := gomock.NewController(t)
       xMock := xmock.NewMockX(ctrl)
       if tt.shouldCallX {
@@ -185,7 +161,7 @@ func TestComplicatedTable(t *testing.T) {
 
       got, err := DoComplexThing(tt.give, xMock, yMock)
 
-      // verify results
+      // проверка результатов
       if tt.wantErr != nil {
         require.EqualError(t, err, tt.wantErr)
         return
@@ -201,7 +177,7 @@ func TestComplicatedTable(t *testing.T) {
 
 ```go
 func TestShouldCallX(t *testing.T) {
-  // setup mocks
+  // настройка моков
   ctrl := gomock.NewController(t)
   xMock := xmock.NewMockX(ctrl)
   xMock.EXPECT().Call().Return("XResponse", nil)
@@ -215,7 +191,7 @@ func TestShouldCallX(t *testing.T) {
 }
 
 func TestShouldCallYAndFail(t *testing.T) {
-  // setup mocks
+  // настройка моков
   ctrl := gomock.NewController(t)
   xMock := xmock.NewMockX(ctrl)
 
@@ -229,19 +205,13 @@ func TestShouldCallYAndFail(t *testing.T) {
 </td></tr>
 </tbody></table>
 
-This complexity makes it more difficult to change, understand, and prove the
-correctness of the test.
+Эта сложность затрудняет изменение, понимание и доказательство корректности теста.
 
-While there are no strict guidelines, readability and maintainability should
-always be top-of-mind when deciding between Table Tests versus separate tests
-for multiple inputs/outputs to a system.
+Хотя строгих рекомендаций нет, читаемость и поддерживаемость всегда должны быть в приоритете при выборе между табличными тестами и отдельными тестами для множественных входов/выходов системы.
 
-## Parallel Tests
+## Параллельные тесты
 
-Parallel tests, like some specialized loops (for example, those that spawn
-goroutines or capture references as part of the loop body),
-must take care to explicitly assign loop variables within the loop's scope to
-ensure that they hold the expected values.
+Параллельные тесты, как и некоторые специализированные циклы (например, те, которые порождают горутины или захватывают ссылки как часть тела цикла), должны явно присваивать переменные цикла в области видимости цикла, чтобы гарантировать, что они содержат ожидаемые значения.
 
 ```go
 tests := []struct{
@@ -259,9 +229,6 @@ for _, tt := range tests {
 }
 ```
 
-In the example above, we must declare a `tt` variable scoped to the loop
-iteration because of the use of `t.Parallel()` below.
-If we do not do that, most or all tests will receive an unexpected value for
-`tt`, or a value that changes as they're running.
+В примере выше мы должны объявить переменную `tt` с областью видимости итерации цикла из-за использования `t.Parallel()` ниже. Если мы этого не сделаем, большинство или все тесты получат неожиданное значение для `tt` или значение, которое изменяется во время их выполнения.
 
 <!-- TODO: Explain how to use _test packages. -->

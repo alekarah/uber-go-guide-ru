@@ -1,16 +1,11 @@
-# Functional Options
+# Функциональные опции
 
-Functional options is a pattern in which you declare an opaque `Option` type
-that records information in some internal struct. You accept a variadic number
-of these options and act upon the full information recorded by the options on
-the internal struct.
+Функциональные опции — это паттерн, в котором вы объявляете непрозрачный тип `Option`, который записывает информацию в некоторую внутреннюю структуру. Вы принимаете вариативное количество этих опций и действуете на основе полной информации, записанной опциями во внутренней структуре.
 
-Use this pattern for optional arguments in constructors and other public APIs
-that you foresee needing to expand, especially if you already have three or
-more arguments on those functions.
+Используйте этот паттерн для необязательных аргументов в конструкторах и других публичных API, которые, как вы предполагаете, потребуют расширения, особенно если у вас уже есть три или более аргументов в этих функциях.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -43,7 +38,7 @@ func WithLogger(log *zap.Logger) Option {
   // ...
 }
 
-// Open creates a connection.
+// Open создаёт соединение.
 func Open(
   addr string,
   opts ...Option,
@@ -55,8 +50,7 @@ func Open(
 </td></tr>
 <tr><td>
 
-The cache and logger parameters must always be provided, even if the user
-wants to use the default.
+Параметры cache и logger всегда должны быть предоставлены, даже если пользователь хочет использовать значения по умолчанию.
 
 ```go
 db.Open(addr, db.DefaultCache, zap.NewNop())
@@ -67,7 +61,7 @@ db.Open(addr, false /* cache */, log)
 
 </td><td>
 
-Options are provided only if needed.
+Опции предоставляются только при необходимости.
 
 ```go
 db.Open(addr)
@@ -83,9 +77,7 @@ db.Open(
 </td></tr>
 </tbody></table>
 
-Our suggested way of implementing this pattern is with an `Option` interface
-that holds an unexported method, recording options on an unexported `options`
-struct.
+Наш предлагаемый способ реализации этого паттерна — с интерфейсом `Option`, который содержит неэкспортируемый метод, записывающий опции в неэкспортируемую структуру `options`.
 
 ```go
 type options struct {
@@ -119,7 +111,7 @@ func WithLogger(log *zap.Logger) Option {
   return loggerOption{Log: log}
 }
 
-// Open creates a connection.
+// Open создаёт соединение.
 func Open(
   addr string,
   opts ...Option,
@@ -137,15 +129,9 @@ func Open(
 }
 ```
 
-Note that there's a method of implementing this pattern with closures but we
-believe that the pattern above provides more flexibility for authors and is
-easier to debug and test for users. In particular, it allows options to be
-compared against each other in tests and mocks, versus closures where this is
-impossible. Further, it lets options implement other interfaces, including
-`fmt.Stringer` which allows for user-readable string representations of the
-options.
+Обратите внимание, что существует способ реализации этого паттерна с замыканиями, но мы считаем, что паттерн выше предоставляет больше гибкости для авторов и проще для отладки и тестирования пользователями. В частности, он позволяет сравнивать опции друг с другом в тестах и моках, в отличие от замыканий, где это невозможно. Кроме того, он позволяет опциям реализовывать другие интерфейсы, включая `fmt.Stringer`, который позволяет получить читаемые для пользователя строковые представления опций.
 
-See also,
+См. также:
 
 - [Self-referential functions and the design of options]
 - [Functional options for friendly APIs]

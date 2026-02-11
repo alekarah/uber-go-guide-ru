@@ -1,6 +1,6 @@
 # Прогресс перевода
 
-**Статус:** 38/58 файлов переведено (65.5%)
+**Статус:** 42/58 файлов переведено (72.4%)
 
 > Последнее обновление: 2026-02-11
 
@@ -40,9 +40,6 @@
 - [ ] `consistency.md`
 - [ ] `decl-group.md`
 - [ ] `else-unnecessary.md`
-- [ ] `functional-option.md`
-- [ ] `function-name.md`
-- [ ] `function-order.md`
 - [ ] `global-decl.md`
 - [ ] `global-name.md`
 - [ ] `import-alias.md`
@@ -55,7 +52,6 @@
 - [ ] `printf-const.md`
 - [ ] `printf-name.md`
 - [ ] `string-escape.md`
-- [ ] `test-table.md`
 - [ ] `var-decl.md`
 - [ ] `var-scope.md`
 
