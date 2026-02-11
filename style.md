@@ -1,0 +1,3868 @@
+<!--
+  Этот файл был сгенерирован stitchmd. НЕ РЕДАКТИРУЙТЕ.
+  Для внесения изменений редактируйте файлы в директории "src".
+-->
+
+<!-- markdownlint-disable MD033 -->
+
+# Введение
+
+Стиль — это соглашения, которые определяют наш код. Термин «стиль» не вполне точен, поскольку эти соглашения охватывают гораздо больше, чем просто форматирование исходных файлов — за это отвечает `gofmt`.
+
+Цель данного руководства — управлять этой сложностью, подробно описывая правила и антипаттерны написания Go-кода в Uber. Эти правила существуют для того, чтобы кодовая база оставалась управляемой, и при этом позволяли разработчикам продуктивно использовать возможности языка Go.
+
+Это руководство было изначально создано [Prashant Varanasi] и [Simon Newton] как способ помочь коллегам быстрее освоить Go. С годами оно дорабатывалось на основе отзывов других разработчиков.
+
+  [Prashant Varanasi]: https://github.com/prashantv
+  [Simon Newton]: https://github.com/nomis52
+
+В этом документе описаны идиоматичные соглашения в Go-коде, которым мы следуем в Uber. Многие из них являются общими рекомендациями для Go, в то время как другие дополняют внешние ресурсы:
+
+1. [Effective Go](https://go.dev/doc/effective_go)
+2. [Go Common Mistakes](https://go.dev/wiki/CommonMistakes)
+3. [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
+
+Мы стремимся к тому, чтобы примеры кода были корректными для двух последних минорных версий [релизов](https://go.dev/doc/devel/release) Go.
+
+Весь код должен выполняться без ошибок при запуске `golint` и `go vet`. Мы рекомендуем настроить ваш редактор так, чтобы:
+
+- Запускать `goimports` при сохранении
+- Запускать `golint` и `go vet` для проверки ошибок
+
+Информацию о поддержке редакторов для инструментов Go можно найти здесь:
+<https://go.dev/wiki/IDEsAndTextEditorPlugins>
+
+
+# Указатели на интерфейсы
+
+Вам практически никогда не нужен указатель на интерфейс. Вы должны передавать интерфейсы как значения — лежащие в основе данные всё ещё могут быть указателем.
+
+Интерфейс состоит из двух полей:
+
+1. Указатель на информацию о конкретном типе. Можно упрощённо назвать это полем типа.
+2. Указатель на данные. Если сохранённые данные являются указателем, он хранится напрямую. Если сохранённые данные являются значением, то хранится указатель на это значение.
+
+Если вы хотите, чтобы методы интерфейса изменяли лежащие в основе данные, вы должны использовать указатель.
+
+
+# Проверка соответствия интерфейсу
+
+Проверяйте соответствие интерфейсу во время компиляции, где это уместно. Это включает:
+
+- Экспортируемые типы, которые должны реализовывать определённые интерфейсы как часть их API-контракта
+- Экспортируемые или неэкспортируемые типы, которые являются частью коллекции типов, реализующих один и тот же интерфейс
+- Другие случаи, когда нарушение интерфейса приведёт к проблемам у пользователей
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type Handler struct {
+  // ...
+}
+
+
+
+func (h *Handler) ServeHTTP(
+  w http.ResponseWriter,
+  r *http.Request,
+) {
+  ...
+}
+```
+
+</td><td>
+
+```go
+type Handler struct {
+  // ...
+}
+
+var _ http.Handler = (*Handler)(nil)
+
+func (h *Handler) ServeHTTP(
+  w http.ResponseWriter,
+  r *http.Request,
+) {
+  // ...
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Выражение `var _ http.Handler = (*Handler)(nil)` не скомпилируется, если `*Handler` когда-либо перестанет соответствовать интерфейсу `http.Handler`.
+
+Правая часть присваивания должна быть нулевым значением проверяемого типа. Это `nil` для типов-указателей (таких как `*Handler`), слайсов и map, и пустая структура для типов-структур.
+
+```go
+type LogHandler struct {
+  h   http.Handler
+  log *zap.Logger
+}
+
+var _ http.Handler = LogHandler{}
+
+func (h LogHandler) ServeHTTP(
+  w http.ResponseWriter,
+  r *http.Request,
+) {
+  // ...
+}
+```
+
+
+# Приёмники и интерфейсы
+
+Методы с приёмниками-значениями могут вызываться как на указателях, так и на значениях.
+Методы с приёмниками-указателями могут вызываться только на указателях или [адресуемых значениях].
+
+  [адресуемых значениях]: https://go.dev/ref/spec#Method_values
+
+Например,
+
+```go
+type S struct {
+  data string
+}
+
+func (s S) Read() string {
+  return s.data
+}
+
+func (s *S) Write(str string) {
+  s.data = str
+}
+
+// Мы не можем получить указатели на значения, хранящиеся в map,
+// потому что они не являются адресуемыми.
+sVals := map[int]S{1: {"A"}}
+
+// Мы можем вызвать Read на значениях, хранящихся в map, потому что Read
+// имеет приёмник-значение, которому не требуется, чтобы значение
+// было адресуемым.
+sVals[1].Read()
+
+// Мы не можем вызвать Write на значениях, хранящихся в map, потому что Write
+// имеет приёмник-указатель, и невозможно получить указатель
+// на значение, хранящееся в map.
+//
+//  sVals[1].Write("test")
+
+sPtrs := map[int]*S{1: {"A"}}
+
+// Вы можете вызвать как Read, так и Write, если map хранит указатели,
+// потому что указатели по своей природе адресуемы.
+sPtrs[1].Read()
+sPtrs[1].Write("test")
+```
+
+Аналогично, интерфейс может быть удовлетворён указателем, даже если метод имеет приёмник-значение.
+
+```go
+type F interface {
+  f()
+}
+
+type S1 struct{}
+
+func (s S1) f() {}
+
+type S2 struct{}
+
+func (s *S2) f() {}
+
+s1Val := S1{}
+s1Ptr := &S1{}
+s2Val := S2{}
+s2Ptr := &S2{}
+
+var i F
+i = s1Val
+i = s1Ptr
+i = s2Ptr
+
+// Следующее не скомпилируется, так как s2Val — это значение, а для f нет приёмника-значения.
+//   i = s2Val
+```
+
+В Effective Go есть хорошая статья на тему [Указатели vs. Значения].
+
+  [Указатели vs. Значения]: https://go.dev/doc/effective_go#pointers_vs_values
+
+
+# Мьютексы с нулевым значением валидны
+
+Нулевое значение `sync.Mutex` и `sync.RWMutex` является валидным, поэтому вам практически никогда не нужен указатель на мьютекс.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+mu := new(sync.Mutex)
+mu.Lock()
+```
+
+</td><td>
+
+```go
+var mu sync.Mutex
+mu.Lock()
+```
+
+</td></tr>
+</tbody></table>
+
+Если вы используете структуру через указатель, то мьютекс должен быть полем-значением (не указателем) в ней. Не встраивайте мьютекс в структуру, даже если структура не экспортируется.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type SMap struct {
+  sync.Mutex
+
+  data map[string]string
+}
+
+func NewSMap() *SMap {
+  return &SMap{
+    data: make(map[string]string),
+  }
+}
+
+func (m *SMap) Get(k string) string {
+  m.Lock()
+  defer m.Unlock()
+
+  return m.data[k]
+}
+```
+
+</td><td>
+
+```go
+type SMap struct {
+  mu sync.Mutex
+
+  data map[string]string
+}
+
+func NewSMap() *SMap {
+  return &SMap{
+    data: make(map[string]string),
+  }
+}
+
+func (m *SMap) Get(k string) string {
+  m.mu.Lock()
+  defer m.mu.Unlock()
+
+  return m.data[k]
+}
+```
+
+</td></tr>
+
+<tr><td>
+
+Поле `Mutex`, а также методы `Lock` и `Unlock` непреднамеренно становятся частью экспортируемого API `SMap`.
+
+</td><td>
+
+Мьютекс и его методы являются деталями реализации `SMap`, скрытыми от вызывающих сторон.
+
+</td></tr>
+</tbody></table>
+
+
+# Копирование слайсов и map на границах
+
+Слайсы и map содержат указатели на лежащие в основе данные, поэтому будьте осторожны в сценариях, когда их нужно копировать.
+
+## Получение слайсов и map
+
+Имейте в виду, что пользователи могут изменить map или слайс, который вы получили в качестве аргумента, если вы сохраните ссылку на него.
+
+<table>
+<thead><tr><th>Плохо</th> <th>Хорошо</th></tr></thead>
+<tbody>
+<tr>
+<td>
+
+```go
+func (d *Driver) SetTrips(trips []Trip) {
+  d.trips = trips
+}
+
+trips := ...
+d1.SetTrips(trips)
+
+// Вы действительно хотели изменить d1.trips?
+trips[0] = ...
+```
+
+</td>
+<td>
+
+```go
+func (d *Driver) SetTrips(trips []Trip) {
+  d.trips = make([]Trip, len(trips))
+  copy(d.trips, trips)
+}
+
+trips := ...
+d1.SetTrips(trips)
+
+// Теперь мы можем изменить trips[0], не затрагивая d1.trips.
+trips[0] = ...
+```
+
+</td>
+</tr>
+
+</tbody>
+</table>
+
+## Возврат слайсов и map
+
+Аналогично, будьте осторожны с изменениями пользователями map или слайсов, раскрывающими внутреннее состояние.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type Stats struct {
+  mu sync.Mutex
+  counters map[string]int
+}
+
+// Snapshot возвращает текущую статистику.
+func (s *Stats) Snapshot() map[string]int {
+  s.mu.Lock()
+  defer s.mu.Unlock()
+
+  return s.counters
+}
+
+// snapshot больше не защищён мьютексом, поэтому любой
+// доступ к snapshot подвержен гонкам данных.
+snapshot := stats.Snapshot()
+```
+
+</td><td>
+
+```go
+type Stats struct {
+  mu sync.Mutex
+  counters map[string]int
+}
+
+func (s *Stats) Snapshot() map[string]int {
+  s.mu.Lock()
+  defer s.mu.Unlock()
+
+  result := make(map[string]int, len(s.counters))
+  for k, v := range s.counters {
+    result[k] = v
+  }
+  return result
+}
+
+// Snapshot теперь является копией.
+snapshot := stats.Snapshot()
+```
+
+</td></tr>
+</tbody></table>
+
+
+
+
+# Defer для очистки ресурсов
+
+Используйте defer для очистки ресурсов, таких как файлы и блокировки.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+p.Lock()
+if p.count < 10 {
+  p.Unlock()
+  return p.count
+}
+
+p.count++
+newCount := p.count
+p.Unlock()
+
+return newCount
+
+// легко пропустить разблокировку из-за множественных return
+```
+
+</td><td>
+
+```go
+p.Lock()
+defer p.Unlock()
+
+if p.count < 10 {
+  return p.count
+}
+
+p.count++
+return p.count
+
+// более читабельно
+```
+
+</td></tr>
+</tbody></table>
+
+Defer имеет крайне малые накладные расходы и его следует избегать только если вы можете доказать, что время выполнения вашей функции измеряется в наносекундах. Выигрыш в читабельности от использования defer стоит его минимальной стоимости. Это особенно верно для больших методов, которые выполняют больше, чем простой доступ к памяти, где другие вычисления более значимы, чем `defer`.
+
+
+# Размер канала — один или ноль
+
+Каналы обычно должны иметь размер один или быть небуферизованными. По умолчанию каналы небуферизованные и имеют размер ноль. Любой другой размер должен подвергаться тщательной проверке. Подумайте, как определяется размер, что препятствует заполнению канала под нагрузкой и блокировке записывающих сторон, и что происходит, когда это случается.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// Должно хватить кому угодно!
+c := make(chan int, 64)
+```
+
+</td><td>
+
+```go
+// Размер один
+c := make(chan int, 1) // или
+// Небуферизованный канал, размер ноль
+c := make(chan int)
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Начинайте enum с единицы
+
+Стандартный способ введения перечислений в Go — объявить пользовательский тип и группу `const` с `iota`. Поскольку переменные имеют нулевое значение по умолчанию, вы обычно должны начинать ваши enum с ненулевого значения.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type Operation int
+
+const (
+  Add Operation = iota
+  Subtract
+  Multiply
+)
+
+// Add=0, Subtract=1, Multiply=2
+```
+
+</td><td>
+
+```go
+type Operation int
+
+const (
+  Add Operation = iota + 1
+  Subtract
+  Multiply
+)
+
+// Add=1, Subtract=2, Multiply=3
+```
+
+</td></tr>
+</tbody></table>
+
+Существуют случаи, когда использование нулевого значения имеет смысл, например, когда нулевое значение является желаемым поведением по умолчанию.
+
+```go
+type LogOutput int
+
+const (
+  LogToStdout LogOutput = iota
+  LogToFile
+  LogToRemote
+)
+
+// LogToStdout=0, LogToFile=1, LogToRemote=2
+```
+
+<!-- TODO: section on String methods for enums -->
+
+
+# Используйте `"time"` для работы со временем
+
+Время — это сложно. Неправильные предположения, часто делаемые о времени, включают следующие.
+
+1. День состоит из 24 часов
+2. Час состоит из 60 минут
+3. Неделя состоит из 7 дней
+4. Год состоит из 365 дней
+5. [И многое другое](https://infiniteundo.com/post/25326999628/falsehoods-programmers-believe-about-time)
+
+Например, *1* означает, что добавление 24 часов к моменту времени не всегда даст новый календарный день.
+
+Поэтому всегда используйте пакет [`"time"`] при работе со временем, потому что он помогает справляться с этими неправильными предположениями более безопасным и точным образом.
+
+  [`"time"`]: https://pkg.go.dev/time
+
+## Используйте `time.Time` для моментов времени
+
+Используйте [`time.Time`] при работе с моментами времени, и методы `time.Time` при сравнении, сложении или вычитании времени.
+
+  [`time.Time`]: https://pkg.go.dev/time#Time
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func isActive(now, start, stop int) bool {
+  return start <= now && now < stop
+}
+```
+
+</td><td>
+
+```go
+func isActive(now, start, stop time.Time) bool {
+  return (start.Before(now) || start.Equal(now)) && now.Before(stop)
+}
+```
+
+</td></tr>
+</tbody></table>
+
+## Используйте `time.Duration` для периодов времени
+
+Используйте [`time.Duration`] при работе с периодами времени.
+
+  [`time.Duration`]: https://pkg.go.dev/time#Duration
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func poll(delay int) {
+  for {
+    // ...
+    time.Sleep(time.Duration(delay) * time.Millisecond)
+  }
+}
+
+poll(10) // это секунды или миллисекунды?
+```
+
+</td><td>
+
+```go
+func poll(delay time.Duration) {
+  for {
+    // ...
+    time.Sleep(delay)
+  }
+}
+
+poll(10*time.Second)
+```
+
+</td></tr>
+</tbody></table>
+
+Возвращаясь к примеру добавления 24 часов к моменту времени, метод, который мы используем для добавления времени, зависит от намерения. Если мы хотим то же время суток, но на следующий календарный день, мы должны использовать [`Time.AddDate`]. Однако, если мы хотим момент времени, гарантированно находящийся через 24 часа после предыдущего времени, мы должны использовать [`Time.Add`].
+
+  [`Time.AddDate`]: https://pkg.go.dev/time#Time.AddDate
+  [`Time.Add`]: https://pkg.go.dev/time#Time.Add
+
+```go
+newDay := t.AddDate(0 /* years */, 0 /* months */, 1 /* days */)
+maybeNewDay := t.Add(24 * time.Hour)
+```
+
+## Используйте `time.Time` и `time.Duration` с внешними системами
+
+Используйте `time.Duration` и `time.Time` при взаимодействии с внешними системами, когда это возможно. Например:
+
+- Флаги командной строки: [`flag`] поддерживает `time.Duration` через [`time.ParseDuration`]
+- JSON: [`encoding/json`] поддерживает кодирование `time.Time` как строки [RFC 3339] через свой метод [`UnmarshalJSON` method]
+- SQL: [`database/sql`] поддерживает преобразование колонок `DATETIME` или `TIMESTAMP` в `time.Time` и обратно, если базовый драйвер поддерживает это
+- YAML: [`gopkg.in/yaml.v2`] поддерживает `time.Time` как строку [RFC 3339], и `time.Duration` через [`time.ParseDuration`].
+
+  [`flag`]: https://pkg.go.dev/flag
+  [`time.ParseDuration`]: https://pkg.go.dev/time#ParseDuration
+  [`encoding/json`]: https://pkg.go.dev/encoding/json
+  [RFC 3339]: https://tools.ietf.org/html/rfc3339
+  [`UnmarshalJSON` method]: https://pkg.go.dev/time#Time.UnmarshalJSON
+  [`database/sql`]: https://pkg.go.dev/database/sql
+  [`gopkg.in/yaml.v2`]: https://pkg.go.dev/gopkg.in/yaml.v2
+
+Когда невозможно использовать `time.Duration` в этих взаимодействиях, используйте `int` или `float64` и включите единицу измерения в имя поля.
+
+Например, поскольку `encoding/json` не поддерживает `time.Duration`, единица измерения включается в имя поля.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// {"interval": 2}
+type Config struct {
+  Interval int `json:"interval"`
+}
+```
+
+</td><td>
+
+```go
+// {"intervalMillis": 2000}
+type Config struct {
+  IntervalMillis int `json:"intervalMillis"`
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Когда невозможно использовать `time.Time` в этих взаимодействиях, если не согласована альтернатива, используйте `string` и форматируйте временные метки, как определено в [RFC 3339]. Этот формат используется по умолчанию методом [`Time.UnmarshalText`] и доступен для использования в `Time.Format` и `time.Parse` через [`time.RFC3339`].
+
+  [`Time.UnmarshalText`]: https://pkg.go.dev/time#Time.UnmarshalText
+  [`time.RFC3339`]: https://pkg.go.dev/time#RFC3339
+
+Хотя на практике это обычно не проблема, имейте в виду, что пакет `"time"` не поддерживает парсинг временных меток с високосными секундами ([8728]), и также не учитывает високосные секунды в вычислениях ([15190]). Если вы сравниваете два момента времени, разница не будет включать високосные секунды, которые могли произойти между этими двумя моментами.
+
+  [8728]: https://github.com/golang/go/issues/8728
+  [15190]: https://github.com/golang/go/issues/15190
+
+
+# Типы ошибок
+
+Существует несколько вариантов объявления ошибок.
+Прежде чем выбрать наиболее подходящий вариант для вашего случая, рассмотрите следующее.
+
+- Нужно ли вызывающей стороне сопоставлять ошибку, чтобы обработать её?
+  Если да, мы должны поддержать функции [`errors.Is`] или [`errors.As`],
+  объявив переменную ошибки верхнего уровня или пользовательский тип.
+- Является ли сообщение об ошибке статической строкой
+  или динамической строкой, требующей контекстной информации?
+  В первом случае мы можем использовать [`errors.New`], но во втором случае мы должны
+  использовать [`fmt.Errorf`] или пользовательский тип ошибки.
+- Передаём ли мы дальше новую ошибку, возвращённую нижележащей функцией?
+  Если да, см. [раздел об оборачивании ошибок](error-wrap.md).
+
+[`errors.Is`]: https://pkg.go.dev/errors#Is
+[`errors.As`]: https://pkg.go.dev/errors#As
+
+| Сопоставление? | Сообщение | Рекомендация                        |
+|----------------|-----------|-------------------------------------|
+| Нет            | static    | [`errors.New`]                      |
+| Нет            | dynamic   | [`fmt.Errorf`]                      |
+| Да             | static    | `var` верхнего уровня с [`errors.New`] |
+| Да             | dynamic   | пользовательский тип `error`        |
+
+[`errors.New`]: https://pkg.go.dev/errors#New
+[`fmt.Errorf`]: https://pkg.go.dev/fmt#Errorf
+
+Например,
+используйте [`errors.New`] для ошибки со статической строкой.
+Экспортируйте эту ошибку как переменную для поддержки сопоставления с помощью `errors.Is`,
+если вызывающей стороне нужно сопоставить и обработать эту ошибку.
+
+<table>
+<thead><tr><th>Без сопоставления</th><th>С сопоставлением</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// package foo
+
+func Open() error {
+  return errors.New("could not open")
+}
+
+// package bar
+
+if err := foo.Open(); err != nil {
+  // Не можем обработать ошибку.
+  panic("unknown error")
+}
+```
+
+</td><td>
+
+```go
+// package foo
+
+var ErrCouldNotOpen = errors.New("could not open")
+
+func Open() error {
+  return ErrCouldNotOpen
+}
+
+// package bar
+
+if err := foo.Open(); err != nil {
+  if errors.Is(err, foo.ErrCouldNotOpen) {
+    // обрабатываем ошибку
+  } else {
+    panic("unknown error")
+  }
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Для ошибки с динамической строкой
+используйте [`fmt.Errorf`], если вызывающей стороне не нужно сопоставлять её,
+и пользовательский тип `error`, если вызывающей стороне нужно сопоставлять её.
+
+<table>
+<thead><tr><th>Без сопоставления</th><th>С сопоставлением</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// package foo
+
+func Open(file string) error {
+  return fmt.Errorf("file %q not found", file)
+}
+
+// package bar
+
+if err := foo.Open("testfile.txt"); err != nil {
+  // Не можем обработать ошибку.
+  panic("unknown error")
+}
+```
+
+</td><td>
+
+```go
+// package foo
+
+type NotFoundError struct {
+  File string
+}
+
+func (e *NotFoundError) Error() string {
+  return fmt.Sprintf("file %q not found", e.File)
+}
+
+func Open(file string) error {
+  return &NotFoundError{File: file}
+}
+
+
+// package bar
+
+if err := foo.Open("testfile.txt"); err != nil {
+  var notFound *NotFoundError
+  if errors.As(err, &notFound) {
+    // обрабатываем ошибку
+  } else {
+    panic("unknown error")
+  }
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Обратите внимание, что если вы экспортируете переменные или типы ошибок из пакета,
+они станут частью публичного API пакета.
+
+
+# Оборачивание ошибок
+
+Существует три основных варианта распространения ошибок при неудачном вызове:
+
+- вернуть исходную ошибку как есть
+- добавить контекст с помощью `fmt.Errorf` и глагола `%w`
+- добавить контекст с помощью `fmt.Errorf` и глагола `%v`
+
+Возвращайте исходную ошибку как есть, если нет дополнительного контекста для добавления.
+Это сохраняет исходный тип и сообщение ошибки.
+Это хорошо подходит для случаев, когда сообщение нижележащей ошибки
+содержит достаточно информации, чтобы отследить её происхождение.
+
+В остальных случаях добавляйте контекст к сообщению об ошибке, где это возможно,
+чтобы вместо расплывчатой ошибки типа "connection refused"
+получить более полезную ошибку типа "call service foo: connection refused".
+
+Используйте `fmt.Errorf` для добавления контекста к вашим ошибкам,
+выбирая между глаголами `%w` и `%v`
+в зависимости от того, должна ли вызывающая сторона иметь возможность
+сопоставить и извлечь нижележащую причину.
+
+- Используйте `%w`, если вызывающая сторона должна иметь доступ к нижележащей ошибке.
+  Это хороший выбор по умолчанию для большинства обёрнутых ошибок,
+  но имейте в виду, что вызывающая сторона может начать полагаться на это поведение.
+  Поэтому для случаев, когда обёрнутая ошибка является известной переменной `var` или типом,
+  документируйте и тестируйте это как часть контракта вашей функции.
+- Используйте `%v`, чтобы скрыть нижележащую ошибку.
+  Вызывающая сторона не сможет сопоставить её,
+  но вы можете переключиться на `%w` в будущем при необходимости.
+
+При добавлении контекста к возвращаемым ошибкам держите контекст кратким, избегая
+фраз типа "failed to", которые констатируют очевидное и накапливаются по мере того,
+как ошибка поднимается по стеку:
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+s, err := store.New()
+if err != nil {
+    return fmt.Errorf(
+        "failed to create new store: %w", err)
+}
+```
+
+</td><td>
+
+```go
+s, err := store.New()
+if err != nil {
+    return fmt.Errorf(
+        "new store: %w", err)
+}
+```
+
+</td></tr><tr><td>
+
+```plain
+failed to x: failed to y: failed to create new store: the error
+```
+
+</td><td>
+
+```plain
+x: y: new store: the error
+```
+
+</td></tr>
+</tbody></table>
+
+Однако, как только ошибка передаётся в другую систему, должно быть понятно, что
+сообщение является ошибкой (например, тег `err` или префикс "Failed" в логах).
+
+См. также [Don't just check errors, handle them gracefully].
+
+  [Don't just check errors, handle them gracefully]: https://dave.cheney.net/2016/04/27/dont-just-check-errors-handle-them-gracefully
+
+
+# Именование ошибок
+
+Для значений ошибок, хранящихся как глобальные переменные,
+используйте префикс `Err` или `err` в зависимости от того, экспортируются ли они.
+Эта рекомендация имеет приоритет над [Префикс _ для неэкспортируемых глобальных переменных](global-name.md).
+
+```go
+var (
+  // Следующие две ошибки экспортируются,
+  // чтобы пользователи этого пакета могли сопоставить их
+  // с помощью errors.Is.
+
+  ErrBrokenLink = errors.New("link is broken")
+  ErrCouldNotOpen = errors.New("could not open")
+
+  // Эта ошибка не экспортируется, потому что
+  // мы не хотим делать её частью нашего публичного API.
+  // Мы всё ещё можем использовать её внутри пакета
+  // с помощью errors.Is.
+
+  errNotFound = errors.New("not found")
+)
+```
+
+Для пользовательских типов ошибок используйте суффикс `Error`.
+
+```go
+// Аналогично, эта ошибка экспортируется,
+// чтобы пользователи этого пакета могли сопоставить её
+// с помощью errors.As.
+
+type NotFoundError struct {
+  File string
+}
+
+func (e *NotFoundError) Error() string {
+  return fmt.Sprintf("file %q not found", e.File)
+}
+
+// А эта ошибка не экспортируется, потому что
+// мы не хотим делать её частью публичного API.
+// Мы всё ещё можем использовать её внутри пакета
+// с помощью errors.As.
+
+type resolveError struct {
+  Path string
+}
+
+func (e *resolveError) Error() string {
+  return fmt.Sprintf("resolve %q", e.Path)
+}
+```
+
+
+# Обрабатывайте ошибки только один раз
+
+Когда вызывающая сторона получает ошибку от вызываемой стороны,
+она может обработать её различными способами
+в зависимости от того, что известно об ошибке.
+
+К ним относятся, но не ограничиваются:
+
+- если контракт вызываемой стороны определяет конкретные ошибки,
+  сопоставление ошибки с помощью `errors.Is` или `errors.As`
+  и различная обработка ветвей
+- если ошибка восстановима,
+  логирование ошибки и корректная деградация
+- если ошибка представляет доменную ошибку,
+  возврат чётко определённой ошибки
+- возврат ошибки, либо [обёрнутой](error-wrap.md), либо дословно
+
+Независимо от того, как вызывающая сторона обрабатывает ошибку,
+она обычно должна обработать каждую ошибку только один раз.
+Вызывающая сторона не должна, например, логировать ошибку и затем возвращать её,
+потому что *её* вызывающие стороны также могут обработать эту ошибку.
+
+Например, рассмотрим следующие случаи:
+
+<table>
+<thead><tr><th>Описание</th><th>Код</th></tr></thead>
+<tbody>
+<tr><td>
+
+**Плохо**: Логирование ошибки и её возврат
+
+Вызывающие стороны выше по стеку, вероятно, выполнят аналогичное действие с ошибкой.
+Это создаёт много шума в логах приложения при небольшой ценности.
+
+</td><td>
+
+```go
+u, err := getUser(id)
+if err != nil {
+  // ПЛОХО: См. описание
+  log.Printf("Could not get user %q: %v", id, err)
+  return err
+}
+```
+
+</td></tr>
+<tr><td>
+
+**Хорошо**: Оборачивание ошибки и её возврат
+
+Вызывающие стороны выше по стеку обработают ошибку.
+Использование `%w` гарантирует, что они смогут сопоставить ошибку с помощью `errors.Is` или `errors.As`
+при необходимости.
+
+</td><td>
+
+```go
+u, err := getUser(id)
+if err != nil {
+  return fmt.Errorf("get user %q: %w", id, err)
+}
+```
+
+</td></tr>
+<tr><td>
+
+**Хорошо**: Логирование ошибки и корректная деградация
+
+Если операция не является строго необходимой,
+мы можем обеспечить деградированный, но работающий опыт,
+восстановившись после неё.
+
+</td><td>
+
+```go
+if err := emitMetrics(); err != nil {
+  // Сбой записи метрик не должен
+  // ломать приложение.
+  log.Printf("Could not emit metrics: %v", err)
+}
+
+```
+
+</td></tr>
+<tr><td>
+
+**Хорошо**: Сопоставление ошибки и корректная деградация
+
+Если вызываемая сторона определяет конкретную ошибку в своём контракте,
+и сбой восстановим,
+сопоставьте этот случай ошибки и корректно деградируйте.
+Для всех остальных случаев оберните ошибку и верните её.
+
+Вызывающие стороны выше по стеку обработают другие ошибки.
+
+</td><td>
+
+```go
+tz, err := getUserTimeZone(id)
+if err != nil {
+  if errors.Is(err, ErrUserNotFound) {
+    // Пользователь не существует. Используем UTC.
+    tz = time.UTC
+  } else {
+    return fmt.Errorf("get user %q: %w", id, err)
+  }
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Обрабатывайте ошибки приведения типов
+
+Однозначная форма возврата [приведения типов] вызовет panic при неправильном типе. Поэтому всегда используйте идиому "comma ok".
+
+  [приведения типов]: https://go.dev/ref/spec#Type_assertions
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+t := i.(string)
+```
+
+</td><td>
+
+```go
+t, ok := i.(string)
+if !ok {
+  // корректно обрабатываем ошибку
+}
+```
+
+</td></tr>
+</tbody></table>
+
+<!-- TODO: There are a few situations where the single assignment form is
+fine. -->
+
+
+# Не используйте panic
+
+Код, работающий в production, должен избегать panic. Panic — это основная причина [каскадных сбоев]. Если возникает ошибка, функция должна вернуть ошибку и позволить вызывающей стороне решить, как её обработать.
+
+  [каскадных сбоев]: https://en.wikipedia.org/wiki/Cascading_failure
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func run(args []string) {
+  if len(args) == 0 {
+    panic("an argument is required")
+  }
+  // ...
+}
+
+func main() {
+  run(os.Args[1:])
+}
+```
+
+</td><td>
+
+```go
+func run(args []string) error {
+  if len(args) == 0 {
+    return errors.New("an argument is required")
+  }
+  // ...
+  return nil
+}
+
+func main() {
+  if err := run(os.Args[1:]); err != nil {
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
+  }
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Panic/recover — это не стратегия обработки ошибок. Программа должна вызывать panic только когда происходит что-то неисправимое, например разыменование nil. Исключением является инициализация программы: критические проблемы при запуске, которые должны прервать выполнение программы, могут вызывать panic.
+
+```go
+var _statusTemplate = template.Must(template.New("name").Parse("_statusHTML"))
+```
+
+Даже в тестах предпочитайте `t.Fatal` или `t.FailNow` вместо panic, чтобы гарантировать, что тест будет помечен как неуспешный.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// func TestFoo(t *testing.T)
+
+f, err := os.CreateTemp("", "test")
+if err != nil {
+  panic("failed to set up test")
+}
+```
+
+</td><td>
+
+```go
+// func TestFoo(t *testing.T)
+
+f, err := os.CreateTemp("", "test")
+if err != nil {
+  t.Fatal("failed to set up test")
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Используйте go.uber.org/atomic
+
+Атомарные операции с пакетом [sync/atomic] работают с сырыми типами (`int32`, `int64` и т.д.), поэтому легко забыть использовать атомарную операцию для чтения или изменения переменных.
+
+[go.uber.org/atomic] добавляет типобезопасность этим операциям, скрывая базовый тип. Кроме того, он включает удобный тип `atomic.Bool`.
+
+  [go.uber.org/atomic]: https://pkg.go.dev/go.uber.org/atomic
+  [sync/atomic]: https://pkg.go.dev/sync/atomic
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type foo struct {
+  running int32  // atomic
+}
+
+func (f* foo) start() {
+  if atomic.SwapInt32(&f.running, 1) == 1 {
+     // уже запущен…
+     return
+  }
+  // запускаем Foo
+}
+
+func (f *foo) isRunning() bool {
+  return f.running == 1  // гонка!
+}
+```
+
+</td><td>
+
+```go
+type foo struct {
+  running atomic.Bool
+}
+
+func (f *foo) start() {
+  if f.running.Swap(true) {
+     // уже запущен…
+     return
+  }
+  // запускаем Foo
+}
+
+func (f *foo) isRunning() bool {
+  return f.running.Load()
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Избегайте изменяемых глобальных переменных
+
+Избегайте изменения глобальных переменных, вместо этого выбирайте внедрение зависимостей. Это относится как к указателям на функции, так и к другим видам значений.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// sign.go
+
+var _timeNow = time.Now
+
+func sign(msg string) string {
+  now := _timeNow()
+  return signWithTime(msg, now)
+}
+```
+
+</td><td>
+
+```go
+// sign.go
+
+type signer struct {
+  now func() time.Time
+}
+
+func newSigner() *signer {
+  return &signer{
+    now: time.Now,
+  }
+}
+
+func (s *signer) Sign(msg string) string {
+  now := s.now()
+  return signWithTime(msg, now)
+}
+```
+
+</td></tr>
+<tr><td>
+
+```go
+// sign_test.go
+
+func TestSign(t *testing.T) {
+  oldTimeNow := _timeNow
+  _timeNow = func() time.Time {
+    return someFixedTime
+  }
+  defer func() { _timeNow = oldTimeNow }()
+
+  assert.Equal(t, want, sign(give))
+}
+```
+
+</td><td>
+
+```go
+// sign_test.go
+
+func TestSigner(t *testing.T) {
+  s := newSigner()
+  s.now = func() time.Time {
+    return someFixedTime
+  }
+
+  assert.Equal(t, want, s.Sign(give))
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Избегайте встраивания типов в публичные структуры
+
+Эти встроенные типы раскрывают детали реализации, препятствуют эволюции типов и затемняют документацию.
+
+Предполагая, что вы реализовали различные типы списков, используя общий `AbstractList`, избегайте встраивания `AbstractList` в ваши конкретные реализации списков. Вместо этого вручную напишите только те методы для вашего конкретного списка, которые будут делегировать вызовы абстрактному списку.
+
+```go
+type AbstractList struct {}
+
+// Add добавляет сущность в список.
+func (l *AbstractList) Add(e Entity) {
+  // ...
+}
+
+// Remove удаляет сущность из списка.
+func (l *AbstractList) Remove(e Entity) {
+  // ...
+}
+```
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// ConcreteList это список сущностей.
+type ConcreteList struct {
+  *AbstractList
+}
+```
+
+</td><td>
+
+```go
+// ConcreteList это список сущностей.
+type ConcreteList struct {
+  list *AbstractList
+}
+
+// Add добавляет сущность в список.
+func (l *ConcreteList) Add(e Entity) {
+  l.list.Add(e)
+}
+
+// Remove удаляет сущность из списка.
+func (l *ConcreteList) Remove(e Entity) {
+  l.list.Remove(e)
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Go позволяет [встраивать типы] как компромисс между наследованием и композицией. Внешний тип получает неявные копии методов встроенного типа. Эти методы по умолчанию делегируются одноимённому методу встроенного экземпляра.
+
+  [встраивать типы]: https://go.dev/doc/effective_go#embedding
+
+Структура также получает поле с тем же именем, что и тип. Таким образом, если встроенный тип публичный, поле тоже публичное. Для поддержания обратной совместимости каждая будущая версия внешнего типа должна сохранять встроенный тип.
+
+Встроенный тип редко необходим. Это удобство, которое помогает избежать написания утомительных методов-делегатов.
+
+Даже встраивание совместимого интерфейса AbstractList *interface*, вместо структуры, предоставит разработчику больше гибкости для изменений в будущем, но всё ещё раскроет деталь того, что конкретные списки используют абстрактную реализацию.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// AbstractList это обобщённая реализация
+// для различных видов списков сущностей.
+type AbstractList interface {
+  Add(Entity)
+  Remove(Entity)
+}
+
+// ConcreteList это список сущностей.
+type ConcreteList struct {
+  AbstractList
+}
+```
+
+</td><td>
+
+```go
+// ConcreteList это список сущностей.
+type ConcreteList struct {
+  list AbstractList
+}
+
+// Add добавляет сущность в список.
+func (l *ConcreteList) Add(e Entity) {
+  l.list.Add(e)
+}
+
+// Remove удаляет сущность из списка.
+func (l *ConcreteList) Remove(e Entity) {
+  l.list.Remove(e)
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Как со встроенной структурой, так и со встроенным интерфейсом, встроенный тип накладывает ограничения на эволюцию типа.
+
+- Добавление методов во встроенный интерфейс — это breaking change.
+- Удаление методов из встроенной структуры — это breaking change.
+- Удаление встроенного типа — это breaking change.
+- Замена встроенного типа, даже на альтернативу, удовлетворяющую тому же интерфейсу — это breaking change.
+
+Хотя написание этих методов-делегатов утомительно, дополнительное усилие скрывает детали реализации, оставляет больше возможностей для изменений, а также устраняет косвенность при обнаружении полного интерфейса List в документации.
+
+
+# Избегайте использования встроенных имён
+
+[Спецификация языка] Go описывает несколько встроенных [предопределённых идентификаторов], которые не должны использоваться в качестве имён в программах на Go.
+
+В зависимости от контекста, повторное использование этих идентификаторов в качестве имён либо затенит оригинал в текущей лексической области (и во всех вложенных областях), либо сделает затронутый код запутанным. В лучшем случае компилятор выдаст ошибку; в худшем случае такой код может внести скрытые, трудно обнаруживаемые баги.
+
+  [Спецификация языка]: https://go.dev/ref/spec
+  [предопределённых идентификаторов]: https://go.dev/ref/spec#Predeclared_identifiers
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+var error string
+// `error` затеняет встроенный
+
+// или
+
+func handleErrorMessage(error string) {
+    // `error` затеняет встроенный
+}
+```
+
+</td><td>
+
+```go
+var errorMessage string
+// `error` ссылается на встроенный
+
+// или
+
+func handleErrorMessage(msg string) {
+    // `error` ссылается на встроенный
+}
+```
+
+</td></tr>
+<tr><td>
+
+```go
+type Foo struct {
+    // Хотя эти поля технически не
+    // создают затенение, grep поиск
+    // строк `error` или `string` теперь
+    // неоднозначен.
+    error  error
+    string string
+}
+
+func (f Foo) Error() error {
+    // `error` и `f.error` визуально
+    // похожи
+    return f.error
+}
+
+func (f Foo) String() string {
+    // `string` и `f.string` визуально
+    // похожи
+    return f.string
+}
+```
+
+</td><td>
+
+```go
+type Foo struct {
+    // Строки `error` и `string` теперь
+    // однозначны.
+    err error
+    str string
+}
+
+func (f Foo) Error() error {
+    return f.err
+}
+
+func (f Foo) String() string {
+    return f.str
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Обратите внимание, что компилятор не выдаст ошибки при использовании предопределённых идентификаторов, но такие инструменты, как `go vet`, должны правильно указывать на эти и другие случаи затенения.
+
+
+# Избегайте `init()`
+
+Избегайте `init()` где это возможно. Когда `init()` неизбежна или желательна, код должен стремиться:
+
+1. Быть полностью детерминированным, независимо от окружения программы или вызова.
+2. Избегать зависимости от порядка или побочных эффектов других функций `init()`. Хотя порядок `init()` хорошо известен, код может измениться, и таким образом отношения между функциями `init()` могут сделать код хрупким и подверженным ошибкам.
+3. Избегать доступа или манипуляции глобальным состоянием или состоянием окружения, такими как информация о машине, переменные окружения, рабочая директория, аргументы/входные данные программы и т.д.
+4. Избегать I/O, включая файловую систему, сеть и системные вызовы.
+
+Код, который не может удовлетворить этим требованиям, скорее всего должен быть вспомогательной функцией, вызываемой как часть `main()` (или в другом месте жизненного цикла программы), или быть написан как часть самой `main()`. В частности, библиотеки, предназначенные для использования другими программами, должны проявлять особую осторожность, чтобы быть полностью детерминированными и не выполнять "магию init".
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type Foo struct {
+    // ...
+}
+
+var _defaultFoo Foo
+
+func init() {
+    _defaultFoo = Foo{
+        // ...
+    }
+}
+```
+
+</td><td>
+
+```go
+var _defaultFoo = Foo{
+    // ...
+}
+
+// или, лучше, для тестируемости:
+
+var _defaultFoo = defaultFoo()
+
+func defaultFoo() Foo {
+    return Foo{
+        // ...
+    }
+}
+```
+
+</td></tr>
+<tr><td>
+
+```go
+type Config struct {
+    // ...
+}
+
+var _config Config
+
+func init() {
+    // Плохо: основано на текущей директории
+    cwd, _ := os.Getwd()
+
+    // Плохо: I/O
+    raw, _ := os.ReadFile(
+        path.Join(cwd, "config", "config.yaml"),
+    )
+
+    yaml.Unmarshal(raw, &_config)
+}
+```
+
+</td><td>
+
+```go
+type Config struct {
+    // ...
+}
+
+func loadConfig() Config {
+    cwd, err := os.Getwd()
+    // обрабатываем err
+
+    raw, err := os.ReadFile(
+        path.Join(cwd, "config", "config.yaml"),
+    )
+    // обрабатываем err
+
+    var config Config
+    yaml.Unmarshal(raw, &config)
+
+    return config
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Учитывая вышесказанное, некоторые ситуации, в которых `init()` может быть предпочтительной или необходимой, могут включать:
+
+- Сложные выражения, которые не могут быть представлены как единое присваивание.
+- Подключаемые хуки, такие как диалекты `database/sql`, реестры типов кодирования и т.д.
+- Оптимизации для [Google Cloud Functions] и других форм детерминированных предвычислений.
+
+  [Google Cloud Functions]: https://cloud.google.com/functions/docs/bestpractices/tips#use_global_variables_to_reuse_objects_in_future_invocations
+
+
+# Выход из программы в Main
+
+Go-программы используют [`os.Exit`] или [`log.Fatal*`] для немедленного выхода. (Panic — это не хороший способ выхода из программ, пожалуйста [не используйте panic](panic.md).)
+
+  [`os.Exit`]: https://pkg.go.dev/os#Exit
+  [`log.Fatal*`]: https://pkg.go.dev/log#Fatal
+
+Вызывайте `os.Exit` или `log.Fatal*` **только в `main()`**. Все остальные функции должны возвращать ошибки для сигнализации о сбое.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func main() {
+  body := readFile(path)
+  fmt.Println(body)
+}
+
+func readFile(path string) string {
+  f, err := os.Open(path)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  b, err := io.ReadAll(f)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return string(b)
+}
+```
+
+</td><td>
+
+```go
+func main() {
+  body, err := readFile(path)
+  if err != nil {
+    log.Fatal(err)
+  }
+  fmt.Println(body)
+}
+
+func readFile(path string) (string, error) {
+  f, err := os.Open(path)
+  if err != nil {
+    return "", err
+  }
+
+  b, err := io.ReadAll(f)
+  if err != nil {
+    return "", err
+  }
+
+  return string(b), nil
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Обоснование: Программы с несколькими функциями, которые выходят из программы, представляют несколько проблем:
+
+- Неочевидный поток управления: Любая функция может выйти из программы, поэтому становится сложно рассуждать о потоке управления.
+- Сложность тестирования: Функция, которая выходит из программы, также выйдет из теста, вызывающего её. Это усложняет тестирование функции и создаёт риск пропуска других тестов, которые ещё не были запущены `go test`.
+- Пропущенная очистка: Когда функция выходит из программы, она пропускает вызовы функций, поставленные в очередь с помощью выражений `defer`. Это добавляет риск пропуска важных задач очистки.
+
+
+# Выходите один раз
+
+Если возможно, предпочитайте вызывать `os.Exit` или `log.Fatal` **максимум один раз** в вашей `main()`. Если есть несколько сценариев ошибок, которые останавливают выполнение программы, поместите эту логику в отдельную функцию и возвращайте из неё ошибки.
+
+Это имеет эффект сокращения вашей функции `main()` и помещения всей ключевой бизнес-логики в отдельную, тестируемую функцию.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+package main
+
+func main() {
+  args := os.Args[1:]
+  if len(args) != 1 {
+    log.Fatal("missing file")
+  }
+  name := args[0]
+
+  f, err := os.Open(name)
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer f.Close()
+
+  // Если мы вызовем log.Fatal после этой строки,
+  // f.Close не будет вызван.
+
+  b, err := io.ReadAll(f)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  // ...
+}
+```
+
+</td><td>
+
+```go
+package main
+
+func main() {
+  if err := run(); err != nil {
+    log.Fatal(err)
+  }
+}
+
+func run() error {
+  args := os.Args[1:]
+  if len(args) != 1 {
+    return errors.New("missing file")
+  }
+  name := args[0]
+
+  f, err := os.Open(name)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  b, err := io.ReadAll(f)
+  if err != nil {
+    return err
+  }
+
+  // ...
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Приведённый выше пример использует `log.Fatal`, но рекомендация также применима к `os.Exit` или любому библиотечному коду, который вызывает `os.Exit`.
+
+```go
+func main() {
+  if err := run(); err != nil {
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
+  }
+}
+```
+
+Вы можете изменить сигнатуру `run()` в соответствии с вашими потребностями. Например, если ваша программа должна выходить с определёнными кодами выхода при сбоях, `run()` может возвращать код выхода вместо ошибки. Это также позволяет модульным тестам проверять это поведение напрямую.
+
+```go
+func main() {
+  os.Exit(run(args))
+}
+
+func run() (exitCode int) {
+  // ...
+}
+```
+
+В более общем смысле обратите внимание, что функция `run()`, используемая в этих примерах, не предназначена быть предписывающей. Существует гибкость в имени, сигнатуре и настройке функции `run()`. Среди прочего вы можете:
+
+- принимать необработанные аргументы командной строки (например, `run(os.Args[1:])`)
+- парсить аргументы командной строки в `main()` и передавать их в `run`
+- использовать пользовательский тип ошибки для возврата кода выхода в `main()`
+- поместить бизнес-логику на другой уровень абстракции от `package main`
+
+Эта рекомендация требует только, чтобы было единое место в вашей `main()`, ответственное за фактический выход из процесса.
+
+
+# Используйте теги полей в маршализуемых структурах
+
+Любое поле структуры, которое маршализуется в JSON, YAML или другие форматы, поддерживающие именование полей на основе тегов, должно быть аннотировано соответствующим тегом.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type Stock struct {
+  Price int
+  Name  string
+}
+
+bytes, err := json.Marshal(Stock{
+  Price: 137,
+  Name:  "UBER",
+})
+```
+
+</td><td>
+
+```go
+type Stock struct {
+  Price int    `json:"price"`
+  Name  string `json:"name"`
+  // Безопасно переименовать Name в Symbol.
+}
+
+bytes, err := json.Marshal(Stock{
+  Price: 137,
+  Name:  "UBER",
+})
+```
+
+</td></tr>
+</tbody></table>
+
+Обоснование:
+Сериализованная форма структуры — это контракт между различными системами. Изменения в структуре сериализованной формы — включая имена полей — нарушают этот контракт. Указание имён полей внутри тегов делает контракт явным и защищает от случайного нарушения контракта при рефакторинге или переименовании полей.
+
+
+# Не запускайте горутины без контроля
+
+Горутины легковесны, но не бесплатны: как минимум, они требуют память для стека и CPU для планирования. Хотя эти затраты малы для типичного использования горутин, они могут вызвать серьёзные проблемы с производительностью при запуске в большом количестве без контролируемого жизненного цикла. Горутины с неуправляемым жизненным циклом также могут вызывать другие проблемы, такие как предотвращение сборки мусора для неиспользуемых объектов и удержание ресурсов, которые больше не используются.
+
+Поэтому не допускайте утечек горутин в production-коде. Используйте [go.uber.org/goleak](https://pkg.go.dev/go.uber.org/goleak) для тестирования утечек горутин внутри пакетов, которые могут запускать горутины.
+
+В общем случае, каждая горутина:
+
+- должна иметь предсказуемое время, когда она прекратит выполнение; или
+- должен быть способ сигнализировать горутине, что она должна остановиться
+
+В обоих случаях должен быть способ для кода заблокироваться и дождаться завершения горутины.
+
+Например:
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+go func() {
+  for {
+    flush()
+    time.Sleep(delay)
+  }
+}()
+```
+
+</td><td>
+
+```go
+var (
+  stop = make(chan struct{}) // сигнализирует горутине остановиться
+  done = make(chan struct{}) // сигнализирует нам, что горутина завершилась
+)
+go func() {
+  defer close(done)
+
+  ticker := time.NewTicker(delay)
+  defer ticker.Stop()
+  for {
+    select {
+    case <-ticker.C:
+      flush()
+    case <-stop:
+      return
+    }
+  }
+}()
+
+// Где-то ещё...
+close(stop)  // сигнализируем горутине остановиться
+<-done       // и ждём её завершения
+```
+
+</td></tr>
+<tr><td>
+
+Нет способа остановить эту горутину. Она будет выполняться до завершения приложения.
+
+</td><td>
+
+Эта горутина может быть остановлена с помощью `close(stop)`, и мы можем дождаться её завершения с помощью `<-done`.
+
+</td></tr>
+</tbody></table>
+
+
+# Ожидайте завершения горутин
+
+Для горутины, запущенной системой, должен быть способ дождаться завершения горутины. Существует два популярных способа сделать это:
+
+- Используйте `sync.WaitGroup` для ожидания завершения нескольких горутин.
+  Делайте это, если есть несколько горутин, завершения которых вы хотите дождаться.
+
+    ```go
+    var wg sync.WaitGroup
+    for i := 0; i < N; i++ {
+      wg.Go(...)
+    }
+
+    // Чтобы дождаться завершения всех:
+    wg.Wait()
+    ```
+
+- Добавьте ещё один `chan struct{}`, который горутина закрывает по завершении.
+  Делайте это, если есть только одна горутина.
+
+    ```go
+    done := make(chan struct{})
+    go func() {
+      defer close(done)
+      // ...
+    }()
+
+    // Чтобы дождаться завершения горутины:
+    <-done
+    ```
+
+
+# Никаких горутин в `init()`
+
+Функции `init()` не должны запускать горутины. См. также [Избегайте init()](init.md).
+
+Если пакету нужна фоновая горутина, он должен предоставить объект, который отвечает за управление жизненным циклом горутины. Объект должен предоставлять метод (`Close`, `Stop`, `Shutdown` и т.д.), который сигнализирует фоновой горутине остановиться и ждёт её завершения.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func init() {
+  go doWork()
+}
+
+func doWork() {
+  for {
+    // ...
+  }
+}
+```
+
+</td><td>
+
+```go
+type Worker struct{ /* ... */ }
+
+func NewWorker(...) *Worker {
+  w := &Worker{
+    stop: make(chan struct{}),
+    done: make(chan struct{}),
+    // ...
+  }
+  go w.doWork()
+  return w
+}
+
+func (w *Worker) doWork() {
+  defer close(w.done)
+  for {
+    // ...
+    case <-w.stop:
+      return
+  }
+}
+
+// Shutdown сообщает воркеру остановиться
+// и ждёт, пока он завершится.
+func (w *Worker) Shutdown() {
+  close(w.stop)
+  <-w.done
+}
+```
+
+</td></tr>
+<tr><td>
+
+Запускает фоновую горутину безусловно, когда пользователь экспортирует этот пакет. Пользователь не имеет контроля над горутиной или способа остановить её.
+
+</td><td>
+
+Запускает воркер только если пользователь запросит это. Предоставляет способ остановить воркер, чтобы пользователь мог освободить ресурсы, используемые воркером.
+
+Обратите внимание, что вы должны использовать `WaitGroup`, если воркер управляет несколькими горутинами. См. [Ожидайте завершения горутин](goroutine-exit.md).
+
+</td></tr>
+</tbody></table>
+
+
+# Производительность
+
+Рекомендации по производительности применяются только к горячему пути (hot path).
+
+
+# Предпочитайте strconv вместо fmt
+
+При конвертации примитивов в строки и обратно, `strconv` быстрее, чем `fmt`.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+for i := 0; i < b.N; i++ {
+  s := fmt.Sprint(rand.Int())
+}
+```
+
+</td><td>
+
+```go
+for i := 0; i < b.N; i++ {
+  s := strconv.Itoa(rand.Int())
+}
+```
+
+</td></tr>
+<tr><td>
+
+```plain
+BenchmarkFmtSprint-4    143 ns/op    2 allocs/op
+```
+
+</td><td>
+
+```plain
+BenchmarkStrconv-4    64.2 ns/op    1 allocs/op
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Избегайте повторных конвертаций строки в байты
+
+Не создавайте слайсы байтов из фиксированной строки повторно. Вместо этого выполните конвертацию один раз и сохраните результат.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+for i := 0; i < b.N; i++ {
+  w.Write([]byte("Hello world"))
+}
+```
+
+</td><td>
+
+```go
+data := []byte("Hello world")
+for i := 0; i < b.N; i++ {
+  w.Write(data)
+}
+```
+
+</td></tr>
+<tr><td>
+
+```plain
+BenchmarkBad-4   50000000   22.2 ns/op
+```
+
+</td><td>
+
+```plain
+BenchmarkGood-4  500000000   3.25 ns/op
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Предпочитайте указывать ёмкость контейнеров
+
+По возможности указывайте ёмкость контейнера, чтобы выделить память для контейнера заранее. Это минимизирует последующие выделения памяти (путём копирования и изменения размера контейнера) при добавлении элементов.
+
+## Указание подсказок о ёмкости map
+
+Где возможно, предоставляйте подсказки о ёмкости при инициализации map с помощью `make()`.
+
+```go
+make(map[T1]T2, hint)
+```
+
+Предоставление подсказки о ёмкости для `make()` пытается правильно определить размер map при инициализации, что уменьшает необходимость увеличения map и выделения памяти по мере добавления элементов в map.
+
+Обратите внимание, что в отличие от слайсов, подсказки о ёмкости map не гарантируют полное, упреждающее выделение памяти, но используются для приблизительной оценки количества требуемых корзин (bucket) hashmap. Следовательно, выделения памяти всё ещё могут происходить при добавлении элементов в map, даже в пределах указанной ёмкости.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+files, _ := os.ReadDir("./files")
+
+m := make(map[string]os.DirEntry)
+for _, f := range files {
+    m[f.Name()] = f
+}
+```
+
+</td><td>
+
+```go
+
+files, _ := os.ReadDir("./files")
+
+m := make(map[string]os.DirEntry, len(files))
+for _, f := range files {
+    m[f.Name()] = f
+}
+```
+
+</td></tr>
+<tr><td>
+
+`m` создан без подсказки о размере; map будет изменять размер
+динамически, вызывая множественные выделения памяти по мере роста.
+
+</td><td>
+
+`m` создан с подсказкой о размере; может быть меньше
+выделений памяти при присваивании.
+
+</td></tr>
+</tbody></table>
+
+## Указание ёмкости слайса
+
+Где возможно, предоставляйте подсказки о ёмкости при инициализации слайсов с помощью `make()`, особенно при добавлении элементов.
+
+```go
+make([]T, length, capacity)
+```
+
+В отличие от map, ёмкость слайса — это не подсказка: компилятор выделит достаточно памяти для ёмкости слайса, указанной в `make()`, что означает, что последующие операции `append()` не потребуют выделения памяти (до тех пор, пока длина слайса не сравняется с ёмкостью, после чего любое добавление потребует изменения размера для размещения дополнительных элементов).
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+for n := 0; n < b.N; n++ {
+  data := make([]int, 0)
+  for k := 0; k < size; k++{
+    data = append(data, k)
+  }
+}
+```
+
+</td><td>
+
+```go
+for n := 0; n < b.N; n++ {
+  data := make([]int, 0, size)
+  for k := 0; k < size; k++{
+    data = append(data, k)
+  }
+}
+```
+
+</td></tr>
+<tr><td>
+
+```plain
+BenchmarkBad-4    100000000    2.48s
+```
+
+</td><td>
+
+```plain
+BenchmarkGood-4   100000000    0.21s
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Избегайте чрезмерно длинных строк
+
+Избегайте строк кода, которые требуют от читателей прокручивать по горизонтали или слишком сильно поворачивать голову.
+
+Мы рекомендуем мягкий лимит длины строки в **99 символов**. Авторы должны стремиться переносить строки до достижения этого лимита, но это не жёсткий лимит. Коду разрешено превышать этот лимит.
+
+
+# Будьте последовательными
+
+Некоторые рекомендации, изложенные в этом документе, могут быть оценены объективно; другие являются ситуационными, контекстуальными или субъективными.
+
+Прежде всего, **будьте последовательными**.
+
+Последовательный код легче поддерживать, легче обосновывать, требует меньше когнитивных усилий и легче мигрировать или обновлять по мере появления новых соглашений или исправления классов ошибок.
+
+И наоборот, наличие множественных различных или конфликтующих стилей в одной кодовой базе вызывает накладные расходы на поддержку, неопределённость и когнитивный диссонанс, всё это может напрямую способствовать снижению скорости, болезненным код-ревью и ошибкам.
+
+При применении этих рекомендаций к кодовой базе рекомендуется вносить изменения на уровне пакета (или выше): применение на уровне подпакета нарушает вышеуказанную озабоченность, внося множественные стили в один и тот же код.
+
+
+# Группируйте похожие объявления
+
+Go поддерживает группировку похожих объявлений.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+import "a"
+import "b"
+```
+
+</td><td>
+
+```go
+import (
+  "a"
+  "b"
+)
+```
+
+</td></tr>
+</tbody></table>
+
+Это также применимо к константам, переменным и объявлениям типов.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+
+const a = 1
+const b = 2
+
+
+
+var a = 1
+var b = 2
+
+
+
+type Area float64
+type Volume float64
+```
+
+</td><td>
+
+```go
+const (
+  a = 1
+  b = 2
+)
+
+var (
+  a = 1
+  b = 2
+)
+
+type (
+  Area float64
+  Volume float64
+)
+```
+
+</td></tr>
+</tbody></table>
+
+Группируйте только связанные объявления. Не группируйте объявления, которые не связаны.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type Operation int
+
+const (
+  Add Operation = iota + 1
+  Subtract
+  Multiply
+  EnvVar = "MY_ENV"
+)
+```
+
+</td><td>
+
+```go
+type Operation int
+
+const (
+  Add Operation = iota + 1
+  Subtract
+  Multiply
+)
+
+const EnvVar = "MY_ENV"
+```
+
+</td></tr>
+</tbody></table>
+
+Группы не ограничены в том, где они могут использоваться. Например, вы можете использовать их внутри функций.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func f() string {
+  red := color.New(0xff0000)
+  green := color.New(0x00ff00)
+  blue := color.New(0x0000ff)
+
+  // ...
+}
+```
+
+</td><td>
+
+```go
+func f() string {
+  var (
+    red   = color.New(0xff0000)
+    green = color.New(0x00ff00)
+    blue  = color.New(0x0000ff)
+  )
+
+  // ...
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Исключение: Объявления переменных, особенно внутри функций, должны группироваться вместе, если объявлены рядом с другими переменными. Делайте это для переменных, объявленных вместе, даже если они не связаны.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func (c *client) request() {
+  caller := c.name
+  format := "json"
+  timeout := 5*time.Second
+  var err error
+
+  // ...
+}
+```
+
+</td><td>
+
+```go
+func (c *client) request() {
+  var (
+    caller  = c.name
+    format  = "json"
+    timeout = 5*time.Second
+    err error
+  )
+
+  // ...
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Порядок групп импортов
+
+Должно быть две группы импортов:
+
+- Стандартная библиотека
+- Всё остальное
+
+Это группировка, применяемая goimports по умолчанию.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+import (
+  "fmt"
+  "os"
+  "go.uber.org/atomic"
+  "golang.org/x/sync/errgroup"
+)
+```
+
+</td><td>
+
+```go
+import (
+  "fmt"
+  "os"
+
+  "go.uber.org/atomic"
+  "golang.org/x/sync/errgroup"
+)
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Имена пакетов
+
+При именовании пакетов выбирайте имя, которое:
+
+- Полностью в нижнем регистре. Без заглавных букв или подчёркиваний.
+- Не требует переименования с использованием именованных импортов в большинстве мест вызова.
+- Короткое и лаконичное. Помните, что имя идентифицируется полностью в каждом месте вызова.
+- Не во множественном числе. Например, `net/url`, а не `net/urls`.
+- Не "common", "util", "shared" или "lib". Это плохие, неинформативные имена.
+
+См. также [Package Names] и [Style guideline for Go packages].
+
+  [Package Names]: https://go.dev/blog/package-names
+  [Style guideline for Go packages]: https://rakyll.org/style-packages/
+
+
+# Имена функций
+
+Мы следуем соглашению сообщества Go об использовании [MixedCaps для имён функций]. Исключение делается для тестовых функций, которые могут содержать подчёркивания для группировки связанных тестовых случаев, например, `TestMyFunction_WhatIsBeingTested`.
+
+  [MixedCaps для имён функций]: https://go.dev/doc/effective_go#mixed-caps
+
+
+# Псевдонимы импортов
+
+Псевдонимы импортов должны использоваться, если имя пакета не совпадает с последним элементом пути импорта.
+
+```go
+import (
+  "net/http"
+
+  client "example.com/client-go"
+  trace "example.com/trace/v2"
+)
+```
+
+Во всех остальных сценариях псевдонимы импортов следует избегать, если только нет прямого конфликта между импортами.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+import (
+  "fmt"
+  "os"
+  runtimetrace "runtime/trace"
+
+  nettrace "golang.net/x/trace"
+)
+```
+
+</td><td>
+
+```go
+import (
+  "fmt"
+  "os"
+  "runtime/trace"
+
+  nettrace "golang.net/x/trace"
+)
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Группировка и порядок функций
+
+- Функции должны быть отсортированы примерно в порядке вызова.
+- Функции в файле должны быть сгруппированы по приёмнику.
+
+Следовательно, экспортируемые функции должны появляться первыми в файле, после определений `struct`, `const`, `var`.
+
+`newXYZ()`/`NewXYZ()` может появиться после определения типа, но до остальных методов приёмника.
+
+Поскольку функции сгруппированы по приёмнику, простые утилитарные функции должны появляться ближе к концу файла.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func (s *something) Cost() {
+  return calcCost(s.weights)
+}
+
+type something struct{ ... }
+
+func calcCost(n []int) int {...}
+
+func (s *something) Stop() {...}
+
+func newSomething() *something {
+    return &something{}
+}
+```
+
+</td><td>
+
+```go
+type something struct{ ... }
+
+func newSomething() *something {
+    return &something{}
+}
+
+func (s *something) Cost() {
+  return calcCost(s.weights)
+}
+
+func (s *something) Stop() {...}
+
+func calcCost(n []int) int {...}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Уменьшайте вложенность
+
+Код должен уменьшать вложенность, где возможно, обрабатывая случаи ошибок/особые условия первыми и возвращаясь рано или продолжая цикл. Уменьшайте количество кода, который вложен на несколько уровней.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+for _, v := range data {
+  if v.F1 == 1 {
+    v = process(v)
+    if err := v.Call(); err == nil {
+      v.Send()
+    } else {
+      return err
+    }
+  } else {
+    log.Printf("Invalid v: %v", v)
+  }
+}
+```
+
+</td><td>
+
+```go
+for _, v := range data {
+  if v.F1 != 1 {
+    log.Printf("Invalid v: %v", v)
+    continue
+  }
+
+  v = process(v)
+  if err := v.Call(); err != nil {
+    return err
+  }
+  v.Send()
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Ненужный else
+
+Если переменная устанавливается в обеих ветках if, это может быть заменено одним if.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+var a int
+if b {
+  a = 100
+} else {
+  a = 10
+}
+```
+
+</td><td>
+
+```go
+a := 10
+if b {
+  a = 100
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Объявления переменных верхнего уровня
+
+На верхнем уровне используйте стандартное ключевое слово `var`. Не указывайте тип, если он не отличается от типа выражения.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+var _s string = F()
+
+func F() string { return "A" }
+```
+
+</td><td>
+
+```go
+var _s = F()
+// Поскольку F уже указывает, что возвращает строку, нам не нужно
+// указывать тип снова.
+
+func F() string { return "A" }
+```
+
+</td></tr>
+</tbody></table>
+
+Указывайте тип, если тип выражения не совпадает точно с желаемым типом.
+
+```go
+type myError struct{}
+
+func (myError) Error() string { return "error" }
+
+func F() myError { return myError{} }
+
+var _e error = F()
+// F возвращает объект типа myError, но мы хотим error.
+```
+
+
+# Префикс _ для неэкспортируемых глобальных переменных
+
+Добавляйте префикс `_` к неэкспортируемым `var` и `const` верхнего уровня, чтобы было ясно, когда они используются, что это глобальные символы.
+
+Обоснование: Переменные и константы верхнего уровня имеют область видимости пакета. Использование общего имени упрощает случайное использование неправильного значения в другом файле.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// foo.go
+
+const (
+  defaultPort = 8080
+  defaultUser = "user"
+)
+
+// bar.go
+
+func Bar() {
+  defaultPort := 9090
+  ...
+  fmt.Println("Default port", defaultPort)
+
+  // Мы не увидим ошибку компиляции, если первая строка
+  // Bar() будет удалена.
+}
+```
+
+</td><td>
+
+```go
+// foo.go
+
+const (
+  _defaultPort = 8080
+  _defaultUser = "user"
+)
+```
+
+</td></tr>
+</tbody></table>
+
+**Исключение**: Неэкспортируемые значения ошибок могут использовать префикс `err` без подчёркивания. См. [Именование ошибок](error-name.md).
+
+
+# Встраивание в структуры
+
+Встраиваемые типы должны быть в верхней части списка полей структуры, и должна быть пустая строка, разделяющая встроенные поля от обычных полей.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type Client struct {
+  version int
+  http.Client
+}
+```
+
+</td><td>
+
+```go
+type Client struct {
+  http.Client
+
+  version int
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Встраивание должно предоставлять ощутимое преимущество, например, добавлять или расширять функциональность семантически подходящим образом. Оно должно делать это с нулевыми негативными эффектами для пользователя (см. также: [Избегайте встраивания типов в публичные структуры](embed-public.md)).
+
+Исключение: Мьютексы не должны встраиваться, даже в неэкспортируемых типах. См. также: [Мьютексы с нулевым значением валидны](mutex-zero-value.md).
+
+Встраивание **не должно**:
+
+- Быть чисто косметическим или для удобства.
+- Делать внешние типы более сложными для конструирования или использования.
+- Влиять на нулевые значения внешних типов. Если внешний тип имеет полезное нулевое значение, он должен иметь полезное нулевое значение и после встраивания внутреннего типа.
+- Раскрывать несвязанные функции или поля от внешнего типа как побочный эффект встраивания внутреннего типа.
+- Раскрывать неэкспортируемые типы.
+- Влиять на семантику копирования внешних типов.
+- Изменять API или семантику типа внешнего типа.
+- Встраивать неканоническую форму внутреннего типа.
+- Раскрывать детали реализации внешнего типа.
+- Позволять пользователям наблюдать или контролировать внутренние компоненты типа.
+- Изменять общее поведение внутренних функций через обёртку способом, который разумно удивит пользователей.
+
+Проще говоря, встраивайте осознанно и намеренно. Хороший тест: "были бы все эти экспортируемые внутренние методы/поля добавлены непосредственно к внешнему типу?"; если ответ "некоторые" или "нет", не встраивайте внутренний тип — используйте поле вместо этого.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+type A struct {
+    // Плохо: A.Lock() и A.Unlock() теперь
+    //        доступны, не дают функциональных
+    //        преимуществ и позволяют
+    //        пользователям контролировать детали
+    //        внутренностей A.
+    sync.Mutex
+}
+```
+
+</td><td>
+
+```go
+type countingWriteCloser struct {
+    // Хорошо: Write() предоставлен на этом
+    //         внешнем уровне для конкретной
+    //         цели и делегирует работу
+    //         методу Write() внутреннего типа.
+    io.WriteCloser
+
+    count int
+}
+
+func (w *countingWriteCloser) Write(bs []byte) (int, error) {
+    w.count += len(bs)
+    return w.WriteCloser.Write(bs)
+}
+```
+
+</td></tr>
+<tr><td>
+
+```go
+type Book struct {
+    // Плохо: указатель изменяет полезность нулевого значения
+    io.ReadWriter
+
+    // другие поля
+}
+
+// позже
+
+var b Book
+b.Read(...)  // panic: nil pointer
+b.String()   // panic: nil pointer
+b.Write(...) // panic: nil pointer
+```
+
+</td><td>
+
+```go
+type Book struct {
+    // Хорошо: имеет полезное нулевое значение
+    bytes.Buffer
+
+    // другие поля
+}
+
+// позже
+
+var b Book
+b.Read(...)  // ok
+b.String()   // ok
+b.Write(...) // ok
+```
+
+</td></tr>
+<tr><td>
+
+```go
+type Client struct {
+    sync.Mutex
+    sync.WaitGroup
+    bytes.Buffer
+    url.URL
+}
+```
+
+</td><td>
+
+```go
+type Client struct {
+    mtx sync.Mutex
+    wg  sync.WaitGroup
+    buf bytes.Buffer
+    url url.URL
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Объявления локальных переменных
+
+Короткие объявления переменных (`:=`) должны использоваться, если переменная явно устанавливается в некоторое значение.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+var s = "foo"
+```
+
+</td><td>
+
+```go
+s := "foo"
+```
+
+</td></tr>
+</tbody></table>
+
+Однако есть случаи, когда значение по умолчанию яснее, когда используется ключевое слово `var`. [Объявление пустых слайсов], например.
+
+  [Объявление пустых слайсов]: https://go.dev/wiki/CodeReviewComments#declaring-empty-slices
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func f(list []int) {
+  filtered := []int{}
+  for _, v := range list {
+    if v > 10 {
+      filtered = append(filtered, v)
+    }
+  }
+}
+```
+
+</td><td>
+
+```go
+func f(list []int) {
+  var filtered []int
+  for _, v := range list {
+    if v > 10 {
+      filtered = append(filtered, v)
+    }
+  }
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# nil является валидным слайсом
+
+`nil` является валидным слайсом длиной 0. Это означает, что:
+
+- Вы не должны возвращать слайс нулевой длины явно. Возвращайте `nil` вместо этого.
+
+  <table>
+  <thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+  <tbody>
+  <tr><td>
+
+  ```go
+  if x == "" {
+    return []int{}
+  }
+  ```
+
+  </td><td>
+
+  ```go
+  if x == "" {
+    return nil
+  }
+  ```
+
+  </td></tr>
+  </tbody></table>
+
+- Чтобы проверить, пуст ли слайс, всегда используйте `len(s) == 0`. Не проверяйте на `nil`.
+
+  <table>
+  <thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+  <tbody>
+  <tr><td>
+
+  ```go
+  func isEmpty(s []string) bool {
+    return s == nil
+  }
+  ```
+
+  </td><td>
+
+  ```go
+  func isEmpty(s []string) bool {
+    return len(s) == 0
+  }
+  ```
+
+  </td></tr>
+  </tbody></table>
+
+- Нулевое значение (слайс, объявленный с `var`) можно использовать немедленно без `make()`.
+
+  <table>
+  <thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+  <tbody>
+  <tr><td>
+
+  ```go
+  nums := []int{}
+  // или, nums := make([]int)
+
+  if add1 {
+    nums = append(nums, 1)
+  }
+
+  if add2 {
+    nums = append(nums, 2)
+  }
+  ```
+
+  </td><td>
+
+  ```go
+  var nums []int
+
+  if add1 {
+    nums = append(nums, 1)
+  }
+
+  if add2 {
+    nums = append(nums, 2)
+  }
+  ```
+
+  </td></tr>
+  </tbody></table>
+
+Помните, что хотя это валидный слайс, nil слайс не эквивалентен выделенному слайсу длиной 0 — один является nil, а другой нет — и эти два могут обрабатываться по-разному в различных ситуациях (например, при сериализации).
+
+
+# Уменьшайте область видимости переменных
+
+Где возможно, уменьшайте область видимости переменных и констант. Не уменьшайте область видимости, если это конфликтует с [Уменьшайте вложенность](nest-less.md).
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+err := os.WriteFile(name, data, 0644)
+if err != nil {
+ return err
+}
+```
+
+</td><td>
+
+```go
+if err := os.WriteFile(name, data, 0644); err != nil {
+ return err
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Если вам нужен результат вызова функции вне if, тогда не следует пытаться уменьшить область видимости.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+if data, err := os.ReadFile(name); err == nil {
+  err = cfg.Decode(data)
+  if err != nil {
+    return err
+  }
+
+  fmt.Println(cfg)
+  return nil
+} else {
+  return err
+}
+```
+
+</td><td>
+
+```go
+data, err := os.ReadFile(name)
+if err != nil {
+   return err
+}
+
+if err := cfg.Decode(data); err != nil {
+  return err
+}
+
+fmt.Println(cfg)
+return nil
+```
+
+</td></tr>
+</tbody></table>
+
+Константы не обязательно должны быть глобальными, если они не используются в нескольких функциях или файлах или не являются частью внешнего контракта пакета.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+const (
+  _defaultPort = 8080
+  _defaultUser = "user"
+)
+
+func Bar() {
+  fmt.Println("Default port", _defaultPort)
+}
+```
+
+</td><td>
+
+```go
+func Bar() {
+  const (
+    defaultPort = 8080
+    defaultUser = "user"
+  )
+  fmt.Println("Default port", defaultPort)
+}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Избегайте голых параметров
+
+Голые параметры в вызовах функций могут ухудшить читаемость. Добавляйте комментарии в стиле C (`/* ... */`) для имён параметров, когда их значение не очевидно.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// func printInfo(name string, isLocal, done bool)
+
+printInfo("foo", true, true)
+```
+
+</td><td>
+
+```go
+// func printInfo(name string, isLocal, done bool)
+
+printInfo("foo", true /* isLocal */, true /* done */)
+```
+
+</td></tr>
+</tbody></table>
+
+Ещё лучше — замените голые типы `bool` на пользовательские типы для более читаемого и типобезопасного кода. Это позволит иметь больше, чем просто два состояния (true/false) для этого параметра в будущем.
+
+```go
+type Region int
+
+const (
+  UnknownRegion Region = iota
+  Local
+)
+
+type Status int
+
+const (
+  StatusReady Status = iota + 1
+  StatusDone
+  // Возможно, у нас будет StatusInProgress в будущем.
+)
+
+func printInfo(name string, region Region, status Status)
+```
+
+
+# Используйте сырые строковые литералы, чтобы избежать экранирования
+
+Go поддерживает [сырые строковые литералы](https://go.dev/ref/spec#raw_string_lit), которые могут занимать несколько строк и включать кавычки. Используйте их, чтобы избежать ручного экранирования строк, которые гораздо сложнее читать.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+wantError := "unknown name:\"test\""
+```
+
+</td><td>
+
+```go
+wantError := `unknown error:"test"`
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Используйте имена полей для инициализации структур
+
+Вы почти всегда должны указывать имена полей при инициализации структур. Это теперь контролируется [`go vet`].
+
+  [`go vet`]: https://pkg.go.dev/cmd/vet
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+k := User{"John", "Doe", true}
+```
+
+</td><td>
+
+```go
+k := User{
+    FirstName: "John",
+    LastName: "Doe",
+    Admin: true,
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Исключение: Имена полей *могут* быть опущены в тестовых таблицах, когда полей 3 или меньше.
+
+```go
+tests := []struct{
+  op Operation
+  want string
+}{
+  {Add, "add"},
+  {Subtract, "subtract"},
+}
+```
+
+
+# Опускайте поля с нулевыми значениями в структурах
+
+При инициализации структур с именами полей опускайте поля, которые имеют нулевые значения, если они не предоставляют значимый контекст. В противном случае позвольте Go установить эти значения в ноль автоматически.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+user := User{
+  FirstName: "John",
+  LastName: "Doe",
+  MiddleName: "",
+  Admin: false,
+}
+```
+
+</td><td>
+
+```go
+user := User{
+  FirstName: "John",
+  LastName: "Doe",
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Это помогает уменьшить шум для читателей, опуская значения, которые являются значениями по умолчанию в данном контексте. Указываются только значимые значения.
+
+Включайте нулевые значения там, где имена полей предоставляют значимый контекст. Например, тестовые случаи в [тестовых таблицах](test-table.md) могут выиграть от имён полей, даже когда они имеют нулевые значения.
+
+```go
+tests := []struct{
+  give string
+  want int
+}{
+  {give: "0", want: 0},
+  // ...
+}
+```
+
+
+# Используйте `var` для структур с нулевыми значениями
+
+Когда все поля структуры опущены в объявлении, используйте форму `var` для объявления структуры.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+user := User{}
+```
+
+</td><td>
+
+```go
+var user User
+```
+
+</td></tr>
+</tbody></table>
+
+Это отличает структуры с нулевыми значениями от тех, у которых есть ненулевые поля, подобно различию, созданному для [инициализации map](map-init.md), и соответствует тому, как мы предпочитаем [объявлять пустые слайсы].
+
+  [объявлять пустые слайсы]: https://go.dev/wiki/CodeReviewComments#declaring-empty-slices
+
+
+# Инициализация ссылок на структуры
+
+Используйте `&T{}` вместо `new(T)` при инициализации ссылок на структуры, чтобы это было согласовано с инициализацией структур.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+sval := T{Name: "foo"}
+
+// несогласованно
+sptr := new(T)
+sptr.Name = "bar"
+```
+
+</td><td>
+
+```go
+sval := T{Name: "foo"}
+
+sptr := &T{Name: "bar"}
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Инициализация map
+
+Предпочитайте `make(..)` для пустых map и map, заполняемых программно. Это делает инициализацию map визуально отличной от объявления, и упрощает добавление подсказок о размере позже, если они доступны.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+var (
+  // m1 безопасно для чтения и записи;
+  // m2 вызовет panic при записи.
+  m1 = map[T1]T2{}
+  m2 map[T1]T2
+)
+```
+
+</td><td>
+
+```go
+var (
+  // m1 безопасно для чтения и записи;
+  // m2 вызовет panic при записи.
+  m1 = make(map[T1]T2)
+  m2 map[T1]T2
+)
+```
+
+</td></tr>
+<tr><td>
+
+Объявление и инициализация визуально похожи.
+
+</td><td>
+
+Объявление и инициализация визуально различны.
+
+</td></tr>
+</tbody></table>
+
+Где возможно, предоставляйте подсказки о ёмкости при инициализации map с помощью `make()`. См. [Указание подсказок о ёмкости map](container-capacity.md#указание-подсказок-о-ёмкости-map) для дополнительной информации.
+
+С другой стороны, если map содержит фиксированный список элементов, используйте литералы map для инициализации map.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+m := make(map[T1]T2, 3)
+m[k1] = v1
+m[k2] = v2
+m[k3] = v3
+```
+
+</td><td>
+
+```go
+m := map[T1]T2{
+  k1: v1,
+  k2: v2,
+  k3: v3,
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Основное практическое правило — использовать литералы map при добавлении фиксированного набора элементов во время инициализации, в противном случае используйте `make` (и указывайте подсказку о размере, если она доступна).
+
+
+# Форматные строки вне Printf
+
+Если вы объявляете форматные строки для функций в стиле `Printf` вне строкового литерала, сделайте их значениями `const`.
+
+Это помогает `go vet` выполнять статический анализ форматной строки.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+msg := "unexpected values %v, %v\n"
+fmt.Printf(msg, 1, 2)
+```
+
+</td><td>
+
+```go
+const msg = "unexpected values %v, %v\n"
+fmt.Printf(msg, 1, 2)
+```
+
+</td></tr>
+</tbody></table>
+
+
+# Именование функций в стиле Printf
+
+Когда вы объявляете функцию в стиле `Printf`, убедитесь, что `go vet` может её обнаружить и проверить форматную строку.
+
+Это означает, что вы должны использовать предопределённые имена функций в стиле `Printf`, если возможно. `go vet` будет проверять их по умолчанию. См. [Printf family] для дополнительной информации.
+
+  [Printf family]: https://pkg.go.dev/cmd/vet#hdr-Printf_family
+
+Если использование предопределённых имён невозможно, завершайте выбранное имя буквой f: `Wrapf`, а не `Wrap`. `go vet` можно попросить проверить конкретные имена в стиле `Printf`, но они должны заканчиваться на f.
+
+```shell
+go vet -printfuncs=wrapf,statusf
+```
+
+См. также [go vet: Printf family check].
+
+  [go vet: Printf family check]: https://kuzminva.wordpress.com/2017/11/07/go-vet-printf-family-check/
+
+
+# Тестовые таблицы
+
+Табличные тесты с [подтестами] могут быть полезным паттерном для написания тестов, чтобы избежать дублирования кода, когда основная логика теста повторяется.
+
+Если тестируемую систему нужно тестировать при _множественных условиях_, где определённые части входных и выходных данных изменяются, следует использовать табличный тест для уменьшения избыточности и улучшения читаемости.
+
+  [подтестами]: https://go.dev/blog/subtests
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// func TestSplitHostPort(t *testing.T)
+
+host, port, err := net.SplitHostPort("192.0.2.0:8000")
+require.NoError(t, err)
+assert.Equal(t, "192.0.2.0", host)
+assert.Equal(t, "8000", port)
+
+host, port, err = net.SplitHostPort("192.0.2.0:http")
+require.NoError(t, err)
+assert.Equal(t, "192.0.2.0", host)
+assert.Equal(t, "http", port)
+
+host, port, err = net.SplitHostPort(":8000")
+require.NoError(t, err)
+assert.Equal(t, "", host)
+assert.Equal(t, "8000", port)
+
+host, port, err = net.SplitHostPort("1:8")
+require.NoError(t, err)
+assert.Equal(t, "1", host)
+assert.Equal(t, "8", port)
+```
+
+</td><td>
+
+```go
+// func TestSplitHostPort(t *testing.T)
+
+tests := []struct{
+  give     string
+  wantHost string
+  wantPort string
+}{
+  {
+    give:     "192.0.2.0:8000",
+    wantHost: "192.0.2.0",
+    wantPort: "8000",
+  },
+  {
+    give:     "192.0.2.0:http",
+    wantHost: "192.0.2.0",
+    wantPort: "http",
+  },
+  {
+    give:     ":8000",
+    wantHost: "",
+    wantPort: "8000",
+  },
+  {
+    give:     "1:8",
+    wantHost: "1",
+    wantPort: "8",
+  },
+}
+
+for _, tt := range tests {
+  t.Run(tt.give, func(t *testing.T) {
+    host, port, err := net.SplitHostPort(tt.give)
+    require.NoError(t, err)
+    assert.Equal(t, tt.wantHost, host)
+    assert.Equal(t, tt.wantPort, port)
+  })
+}
+```
+
+</td></tr>
+</tbody></table>
+
+Тестовые таблицы упрощают добавление контекста к сообщениям об ошибках, уменьшают дублирующую логику и добавляют новые тестовые случаи.
+
+Мы следуем соглашению, что слайс структур называется `tests`, а каждый тестовый случай — `tt`. Кроме того, мы рекомендуем явно указывать входные и выходные значения для каждого тестового случая с префиксами `give` и `want`.
+
+```go
+tests := []struct{
+  give     string
+  wantHost string
+  wantPort string
+}{
+  // ...
+}
+
+for _, tt := range tests {
+  // ...
+}
+```
+
+## Избегайте излишней сложности в табличных тестах
+
+Табличные тесты могут быть сложны для чтения и поддержки, если подтесты содержат условные утверждения или другую логику ветвления. Табличные тесты **НЕ ДОЛЖНЫ** использоваться, когда внутри подтестов требуется сложная или условная логика (т.е. сложная логика внутри цикла `for`).
+
+Большие, сложные табличные тесты вредят читаемости и поддерживаемости, потому что читатели тестов могут испытывать трудности с отладкой сбоев тестов.
+
+Табличные тесты, подобные этому, должны быть разделены либо на несколько тестовых таблиц, либо на несколько отдельных функций `Test...`.
+
+Некоторые идеалы, к которым следует стремиться:
+
+* Фокусируйтесь на самой узкой единице поведения
+* Минимизируйте "глубину теста" и избегайте условных утверждений (см. ниже)
+* Убедитесь, что все поля таблицы используются во всех тестах
+* Убедитесь, что вся логика теста выполняется для всех случаев таблицы
+
+В этом контексте "глубина теста" означает "в рамках данного теста, количество последовательных утверждений, которые требуют выполнения предыдущих утверждений" (аналогично цикломатической сложности). Наличие "более мелких" тестов означает, что между утверждениями меньше зависимостей и, что более важно, эти утверждения с меньшей вероятностью будут условными по умолчанию.
+
+Конкретно, табличные тесты могут стать запутанными и сложными для чтения, если они используют множественные пути ветвления (например, `shouldError`, `expectCall` и т.д.), используют много операторов `if` для конкретных ожиданий моков (например, `shouldCallFoo`) или размещают функции внутри таблицы (например, `setupMocks func(*FooMock)`).
+
+Однако при тестировании поведения, которое изменяется только на основе изменённых входных данных, может быть предпочтительнее группировать похожие случаи вместе в табличном тесте, чтобы лучше проиллюстрировать, как поведение изменяется по всем входным данным, вместо того чтобы разделять сравнимые единицы на отдельные тесты и делать их сложнее для сравнения и противопоставления.
+
+Если тело теста короткое и прямолинейное, допустимо иметь один путь ветвления для случаев успеха против случаев сбоя с полем таблицы вроде `shouldErr` для указания ожиданий ошибок.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+func TestComplicatedTable(t *testing.T) {
+  tests := []struct {
+    give          string
+    want          string
+    wantErr       error
+    shouldCallX   bool
+    shouldCallY   bool
+    giveXResponse string
+    giveXErr      error
+    giveYResponse string
+    giveYErr      error
+  }{
+    // ...
+  }
+
+  for _, tt := range tests {
+    t.Run(tt.give, func(t *testing.T) {
+      // настройка моков
+      ctrl := gomock.NewController(t)
+      xMock := xmock.NewMockX(ctrl)
+      if tt.shouldCallX {
+        xMock.EXPECT().Call().Return(
+          tt.giveXResponse, tt.giveXErr,
+        )
+      }
+      yMock := ymock.NewMockY(ctrl)
+      if tt.shouldCallY {
+        yMock.EXPECT().Call().Return(
+          tt.giveYResponse, tt.giveYErr,
+        )
+      }
+
+      got, err := DoComplexThing(tt.give, xMock, yMock)
+
+      // проверка результатов
+      if tt.wantErr != nil {
+        require.EqualError(t, err, tt.wantErr)
+        return
+      }
+      require.NoError(t, err)
+      assert.Equal(t, want, got)
+    })
+  }
+}
+```
+
+</td><td>
+
+```go
+func TestShouldCallX(t *testing.T) {
+  // настройка моков
+  ctrl := gomock.NewController(t)
+  xMock := xmock.NewMockX(ctrl)
+  xMock.EXPECT().Call().Return("XResponse", nil)
+
+  yMock := ymock.NewMockY(ctrl)
+
+  got, err := DoComplexThing("inputX", xMock, yMock)
+
+  require.NoError(t, err)
+  assert.Equal(t, "want", got)
+}
+
+func TestShouldCallYAndFail(t *testing.T) {
+  // настройка моков
+  ctrl := gomock.NewController(t)
+  xMock := xmock.NewMockX(ctrl)
+
+  yMock := ymock.NewMockY(ctrl)
+  yMock.EXPECT().Call().Return("YResponse", nil)
+
+  _, err := DoComplexThing("inputY", xMock, yMock)
+  assert.EqualError(t, err, "Y failed")
+}
+```
+</td></tr>
+</tbody></table>
+
+Эта сложность затрудняет изменение, понимание и доказательство корректности теста.
+
+Хотя строгих рекомендаций нет, читаемость и поддерживаемость всегда должны быть в приоритете при выборе между табличными тестами и отдельными тестами для множественных входов/выходов системы.
+
+## Параллельные тесты
+
+Параллельные тесты, как и некоторые специализированные циклы (например, те, которые порождают горутины или захватывают ссылки как часть тела цикла), должны явно присваивать переменные цикла в области видимости цикла, чтобы гарантировать, что они содержат ожидаемые значения.
+
+```go
+tests := []struct{
+  give string
+  // ...
+}{
+  // ...
+}
+
+for _, tt := range tests {
+  t.Run(tt.give, func(t *testing.T) {
+    t.Parallel()
+    // ...
+  })
+}
+```
+
+В примере выше мы должны объявить переменную `tt` с областью видимости итерации цикла из-за использования `t.Parallel()` ниже. Если мы этого не сделаем, большинство или все тесты получат неожиданное значение для `tt` или значение, которое изменяется во время их выполнения.
+
+<!-- TODO: Explain how to use _test packages. -->
+
+
+# Функциональные опции
+
+Функциональные опции — это паттерн, в котором вы объявляете непрозрачный тип `Option`, который записывает информацию в некоторую внутреннюю структуру. Вы принимаете вариативное количество этих опций и действуете на основе полной информации, записанной опциями во внутренней структуре.
+
+Используйте этот паттерн для необязательных аргументов в конструкторах и других публичных API, которые, как вы предполагаете, потребуют расширения, особенно если у вас уже есть три или более аргументов в этих функциях.
+
+<table>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
+<tbody>
+<tr><td>
+
+```go
+// package db
+
+func Open(
+  addr string,
+  cache bool,
+  logger *zap.Logger
+) (*Connection, error) {
+  // ...
+}
+```
+
+</td><td>
+
+```go
+// package db
+
+type Option interface {
+  // ...
+}
+
+func WithCache(c bool) Option {
+  // ...
+}
+
+func WithLogger(log *zap.Logger) Option {
+  // ...
+}
+
+// Open создаёт соединение.
+func Open(
+  addr string,
+  opts ...Option,
+) (*Connection, error) {
+  // ...
+}
+```
+
+</td></tr>
+<tr><td>
+
+Параметры cache и logger всегда должны быть предоставлены, даже если пользователь хочет использовать значения по умолчанию.
+
+```go
+db.Open(addr, db.DefaultCache, zap.NewNop())
+db.Open(addr, db.DefaultCache, log)
+db.Open(addr, false /* cache */, zap.NewNop())
+db.Open(addr, false /* cache */, log)
+```
+
+</td><td>
+
+Опции предоставляются только при необходимости.
+
+```go
+db.Open(addr)
+db.Open(addr, db.WithLogger(log))
+db.Open(addr, db.WithCache(false))
+db.Open(
+  addr,
+  db.WithCache(false),
+  db.WithLogger(log),
+)
+```
+
+</td></tr>
+</tbody></table>
+
+Наш предлагаемый способ реализации этого паттерна — с интерфейсом `Option`, который содержит неэкспортируемый метод, записывающий опции в неэкспортируемую структуру `options`.
+
+```go
+type options struct {
+  cache  bool
+  logger *zap.Logger
+}
+
+type Option interface {
+  apply(*options)
+}
+
+type cacheOption bool
+
+func (c cacheOption) apply(opts *options) {
+  opts.cache = bool(c)
+}
+
+func WithCache(c bool) Option {
+  return cacheOption(c)
+}
+
+type loggerOption struct {
+  Log *zap.Logger
+}
+
+func (l loggerOption) apply(opts *options) {
+  opts.logger = l.Log
+}
+
+func WithLogger(log *zap.Logger) Option {
+  return loggerOption{Log: log}
+}
+
+// Open создаёт соединение.
+func Open(
+  addr string,
+  opts ...Option,
+) (*Connection, error) {
+  options := options{
+    cache:  defaultCache,
+    logger: zap.NewNop(),
+  }
+
+  for _, o := range opts {
+    o.apply(&options)
+  }
+
+  // ...
+}
+```
+
+Обратите внимание, что существует способ реализации этого паттерна с замыканиями, но мы считаем, что паттерн выше предоставляет больше гибкости для авторов и проще для отладки и тестирования пользователями. В частности, он позволяет сравнивать опции друг с другом в тестах и моках, в отличие от замыканий, где это невозможно. Кроме того, он позволяет опциям реализовывать другие интерфейсы, включая `fmt.Stringer`, который позволяет получить читаемые для пользователя строковые представления опций.
+
+См. также:
+
+- [Self-referential functions and the design of options]
+- [Functional options for friendly APIs]
+
+  [Self-referential functions and the design of options]: https://commandcenter.blogspot.com/2014/01/self-referential-functions-and-design.html
+  [Functional options for friendly APIs]: https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
+
+<!-- TODO: replace this with parameter structs and functional options, when to
+use one vs other -->
+
+
+# Линтинг
+
+Более важно, чем любой "благословенный" набор линтеров, — линтить последовательно по всей кодовой базе.
+
+Мы рекомендуем использовать следующие линтеры как минимум, потому что считаем, что они помогают отловить наиболее распространённые проблемы и устанавливают высокую планку качества кода, не будучи излишне предписывающими:
+
+- [errcheck] для обеспечения обработки ошибок
+- [goimports] для форматирования кода и управления импортами
+- [revive] для указания на распространённые стилистические ошибки
+- [govet] для анализа кода на наличие распространённых ошибок
+- [staticcheck] для выполнения различных проверок статического анализа
+
+  [errcheck]: https://github.com/kisielk/errcheck
+  [goimports]: https://pkg.go.dev/golang.org/x/tools/cmd/goimports
+  [revive]: https://github.com/mgechev/revive
+  [govet]: https://pkg.go.dev/cmd/vet
+  [staticcheck]: https://staticcheck.dev
+
+  > **Примечание**: [revive] — это современный, более быстрый преемник устаревшего [golint].
+
+## Запускатели линтеров
+
+Мы рекомендуем [golangci-lint] в качестве основного запускателя линтеров для Go-кода, в основном из-за его производительности в больших кодовых базах и возможности настраивать и использовать множество канонических линтеров одновременно. В этом репозитории есть пример файла конфигурации [.golangci.yml] с рекомендуемыми линтерами и настройками.
+
+golangci-lint имеет [различные линтеры], доступные для использования. Вышеуказанные линтеры рекомендуются как базовый набор, и мы поощряем команды добавлять любые дополнительные линтеры, которые имеют смысл для их проектов.
+
+  [golangci-lint]: https://github.com/golangci/golangci-lint
+  [.golangci.yml]: https://github.com/uber-go/guide/blob/master/.golangci.yml
+  [различные линтеры]: https://golangci-lint.run/usage/linters/
+  [golint]: https://github.com/golang/lint
+
+
+
