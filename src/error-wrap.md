@@ -1,40 +1,40 @@
-# Error Wrapping
+# Оборачивание ошибок
 
-There are three main options for propagating errors if a call fails:
+Существует три основных варианта распространения ошибок при неудачном вызове:
 
-- return the original error as-is
-- add context with `fmt.Errorf` and the `%w` verb
-- add context with `fmt.Errorf` and the `%v` verb
+- вернуть исходную ошибку как есть
+- добавить контекст с помощью `fmt.Errorf` и глагола `%w`
+- добавить контекст с помощью `fmt.Errorf` и глагола `%v`
 
-Return the original error as-is if there is no additional context to add.
-This maintains the original error type and message.
-This is well suited for cases when the underlying error message
-has sufficient information to track down where it came from.
+Возвращайте исходную ошибку как есть, если нет дополнительного контекста для добавления.
+Это сохраняет исходный тип и сообщение ошибки.
+Это хорошо подходит для случаев, когда сообщение нижележащей ошибки
+содержит достаточно информации, чтобы отследить её происхождение.
 
-Otherwise, add context to the error message where possible
-so that instead of a vague error such as "connection refused",
-you get more useful errors such as "call service foo: connection refused".
+В остальных случаях добавляйте контекст к сообщению об ошибке, где это возможно,
+чтобы вместо расплывчатой ошибки типа "connection refused"
+получить более полезную ошибку типа "call service foo: connection refused".
 
-Use `fmt.Errorf` to add context to your errors,
-picking between the `%w` or `%v` verbs
-based on whether the caller should be able to
-match and extract the underlying cause.
+Используйте `fmt.Errorf` для добавления контекста к вашим ошибкам,
+выбирая между глаголами `%w` и `%v`
+в зависимости от того, должна ли вызывающая сторона иметь возможность
+сопоставить и извлечь нижележащую причину.
 
-- Use `%w` if the caller should have access to the underlying error.
-  This is a good default for most wrapped errors,
-  but be aware that callers may begin to rely on this behavior.
-  So for cases where the wrapped error is a known `var` or type,
-  document and test it as part of your function's contract.
-- Use `%v` to obfuscate the underlying error.
-  Callers will be unable to match it,
-  but you can switch to `%w` in the future if needed.
+- Используйте `%w`, если вызывающая сторона должна иметь доступ к нижележащей ошибке.
+  Это хороший выбор по умолчанию для большинства обёрнутых ошибок,
+  но имейте в виду, что вызывающая сторона может начать полагаться на это поведение.
+  Поэтому для случаев, когда обёрнутая ошибка является известной переменной `var` или типом,
+  документируйте и тестируйте это как часть контракта вашей функции.
+- Используйте `%v`, чтобы скрыть нижележащую ошибку.
+  Вызывающая сторона не сможет сопоставить её,
+  но вы можете переключиться на `%w` в будущем при необходимости.
 
-When adding context to returned errors, keep the context succinct by avoiding
-phrases like "failed to", which state the obvious and pile up as the error
-percolates up through the stack:
+При добавлении контекста к возвращаемым ошибкам держите контекст кратким, избегая
+фраз типа "failed to", которые констатируют очевидное и накапливаются по мере того,
+как ошибка поднимается по стеку:
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -71,9 +71,9 @@ x: y: new store: the error
 </td></tr>
 </tbody></table>
 
-However once the error is sent to another system, it should be clear the
-message is an error (e.g. an `err` tag or "Failed" prefix in logs).
+Однако, как только ошибка передаётся в другую систему, должно быть понятно, что
+сообщение является ошибкой (например, тег `err` или префикс "Failed" в логах).
 
-See also [Don't just check errors, handle them gracefully].
+См. также [Don't just check errors, handle them gracefully].
 
   [Don't just check errors, handle them gracefully]: https://dave.cheney.net/2016/04/27/dont-just-check-errors-handle-them-gracefully

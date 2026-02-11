@@ -1,33 +1,33 @@
-# Error Naming
+# Именование ошибок
 
-For error values stored as global variables,
-use the prefix `Err` or `err` depending on whether they're exported.
-This guidance supersedes the [Prefix Unexported Globals with _](global-name.md).
+Для значений ошибок, хранящихся как глобальные переменные,
+используйте префикс `Err` или `err` в зависимости от того, экспортируются ли они.
+Эта рекомендация имеет приоритет над [Префикс _ для неэкспортируемых глобальных переменных](global-name.md).
 
 ```go
 var (
-  // The following two errors are exported
-  // so that users of this package can match them
-  // with errors.Is.
+  // Следующие две ошибки экспортируются,
+  // чтобы пользователи этого пакета могли сопоставить их
+  // с помощью errors.Is.
 
   ErrBrokenLink = errors.New("link is broken")
   ErrCouldNotOpen = errors.New("could not open")
 
-  // This error is not exported because
-  // we don't want to make it part of our public API.
-  // We may still use it inside the package
-  // with errors.Is.
+  // Эта ошибка не экспортируется, потому что
+  // мы не хотим делать её частью нашего публичного API.
+  // Мы всё ещё можем использовать её внутри пакета
+  // с помощью errors.Is.
 
   errNotFound = errors.New("not found")
 )
 ```
 
-For custom error types, use the suffix `Error` instead.
+Для пользовательских типов ошибок используйте суффикс `Error`.
 
 ```go
-// Similarly, this error is exported
-// so that users of this package can match it
-// with errors.As.
+// Аналогично, эта ошибка экспортируется,
+// чтобы пользователи этого пакета могли сопоставить её
+// с помощью errors.As.
 
 type NotFoundError struct {
   File string
@@ -37,10 +37,10 @@ func (e *NotFoundError) Error() string {
   return fmt.Sprintf("file %q not found", e.File)
 }
 
-// And this error is not exported because
-// we don't want to make it part of the public API.
-// We can still use it inside the package
-// with errors.As.
+// А эта ошибка не экспортируется, потому что
+// мы не хотим делать её частью публичного API.
+// Мы всё ещё можем использовать её внутри пакета
+// с помощью errors.As.
 
 type resolveError struct {
   Path string
