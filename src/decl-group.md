@@ -1,9 +1,9 @@
-# Group Similar Declarations
+# Группируйте похожие объявления
 
-Go supports grouping similar declarations.
+Go поддерживает группировку похожих объявлений.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -24,10 +24,10 @@ import (
 </td></tr>
 </tbody></table>
 
-This also applies to constants, variables, and type declarations.
+Это также применимо к константам, переменным и объявлениям типов.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -69,10 +69,10 @@ type (
 </td></tr>
 </tbody></table>
 
-Only group related declarations. Do not group declarations that are unrelated.
+Группируйте только связанные объявления. Не группируйте объявления, которые не связаны.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -104,11 +104,10 @@ const EnvVar = "MY_ENV"
 </td></tr>
 </tbody></table>
 
-Groups are not limited in where they can be used. For example, you can use them
-inside of functions.
+Группы не ограничены в том, где они могут использоваться. Например, вы можете использовать их внутри функций.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -139,12 +138,10 @@ func f() string {
 </td></tr>
 </tbody></table>
 
-Exception: Variable declarations, particularly inside functions, should be
-grouped together if declared adjacent to other variables. Do this for variables
-declared together even if they are unrelated.
+Исключение: Объявления переменных, особенно внутри функций, должны группироваться вместе, если объявлены рядом с другими переменными. Делайте это для переменных, объявленных вместе, даже если они не связаны.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 

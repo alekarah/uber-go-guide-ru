@@ -1,6 +1,6 @@
 # Прогресс перевода
 
-**Статус:** 47/58 файлов переведено (81.0%)
+**Статус:** 54/58 файлов переведено (93.1%)
 
 > Последнее обновление: 2026-02-11
 
@@ -37,18 +37,11 @@
 
 ## 📋 Файлы для перевода
 
-- [ ] `consistency.md`
-- [ ] `decl-group.md`
-- [ ] `else-unnecessary.md`
-- [ ] `line-length.md`
 - [ ] `lint.md`
-- [ ] `nest-less.md`
 - [ ] `param-naked.md`
 - [ ] `printf-const.md`
 - [ ] `printf-name.md`
 - [ ] `string-escape.md`
-- [ ] `var-decl.md`
-- [ ] `var-scope.md`
 
 ---
 

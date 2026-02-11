@@ -1,10 +1,9 @@
-# Reduce Scope of Variables
+# Уменьшайте область видимости переменных
 
-Where possible, reduce scope of variables and constants. Do not reduce the scope if it
-conflicts with [Reduce Nesting](nest-less.md).
+Где возможно, уменьшайте область видимости переменных и констант. Не уменьшайте область видимости, если это конфликтует с [Уменьшайте вложенность](nest-less.md).
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -26,11 +25,10 @@ if err := os.WriteFile(name, data, 0644); err != nil {
 </td></tr>
 </tbody></table>
 
-If you need a result of a function call outside of the if, then you should not
-try to reduce the scope.
+Если вам нужен результат вызова функции вне if, тогда не следует пытаться уменьшить область видимости.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -67,11 +65,10 @@ return nil
 </td></tr>
 </tbody></table>
 
-Constants do not need to be global unless they are used in multiple functions or files
-or are part of an external contract of the package.
+Константы не обязательно должны быть глобальными, если они не используются в нескольких функциях или файлах или не являются частью внешнего контракта пакета.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
