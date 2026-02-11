@@ -1,6 +1,6 @@
 # Прогресс перевода
 
-**Статус:** 42/58 файлов переведено (72.4%)
+**Статус:** 47/58 файлов переведено (81.0%)
 
 > Последнее обновление: 2026-02-11
 
@@ -40,14 +40,9 @@
 - [ ] `consistency.md`
 - [ ] `decl-group.md`
 - [ ] `else-unnecessary.md`
-- [ ] `global-decl.md`
-- [ ] `global-name.md`
-- [ ] `import-alias.md`
-- [ ] `import-group.md`
 - [ ] `line-length.md`
 - [ ] `lint.md`
 - [ ] `nest-less.md`
-- [ ] `package-name.md`
 - [ ] `param-naked.md`
 - [ ] `printf-const.md`
 - [ ] `printf-name.md`

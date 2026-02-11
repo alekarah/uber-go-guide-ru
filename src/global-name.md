@@ -1,14 +1,11 @@
-# Prefix Unexported Globals with _
+# Префикс _ для неэкспортируемых глобальных переменных
 
-Prefix unexported top-level `var`s and `const`s with `_` to make it clear when
-they are used that they are global symbols.
+Добавляйте префикс `_` к неэкспортируемым `var` и `const` верхнего уровня, чтобы было ясно, когда они используются, что это глобальные символы.
 
-Rationale: Top-level variables and constants have a package scope. Using a
-generic name makes it easy to accidentally use the wrong value in a different
-file.
+Обоснование: Переменные и константы верхнего уровня имеют область видимости пакета. Использование общего имени упрощает случайное использование неправильного значения в другом файле.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -27,8 +24,8 @@ func Bar() {
   ...
   fmt.Println("Default port", defaultPort)
 
-  // We will not see a compile error if the first line of
-  // Bar() is deleted.
+  // Мы не увидим ошибку компиляции, если первая строка
+  // Bar() будет удалена.
 }
 ```
 
@@ -46,5 +43,4 @@ const (
 </td></tr>
 </tbody></table>
 
-**Exception**: Unexported error values may use the prefix `err` without the underscore.
-See [Error Naming](error-name.md).
+**Исключение**: Неэкспортируемые значения ошибок могут использовать префикс `err` без подчёркивания. См. [Именование ошибок](error-name.md).

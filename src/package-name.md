@@ -1,15 +1,14 @@
-# Package Names
+# Имена пакетов
 
-When naming packages, choose a name that is:
+При именовании пакетов выбирайте имя, которое:
 
-- All lower-case. No capitals or underscores.
-- Does not need to be renamed using named imports at most call sites.
-- Short and succinct. Remember that the name is identified in full at every call
-  site.
-- Not plural. For example, `net/url`, not `net/urls`.
-- Not "common", "util", "shared", or "lib". These are bad, uninformative names.
+- Полностью в нижнем регистре. Без заглавных букв или подчёркиваний.
+- Не требует переименования с использованием именованных импортов в большинстве мест вызова.
+- Короткое и лаконичное. Помните, что имя идентифицируется полностью в каждом месте вызова.
+- Не во множественном числе. Например, `net/url`, а не `net/urls`.
+- Не "common", "util", "shared" или "lib". Это плохие, неинформативные имена.
 
-See also [Package Names] and [Style guideline for Go packages].
+См. также [Package Names] и [Style guideline for Go packages].
 
   [Package Names]: https://go.dev/blog/package-names
   [Style guideline for Go packages]: https://rakyll.org/style-packages/

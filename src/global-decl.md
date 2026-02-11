@@ -1,10 +1,9 @@
-# Top-level Variable Declarations
+# Объявления переменных верхнего уровня
 
-At the top level, use the standard `var` keyword. Do not specify the type,
-unless it is not the same type as the expression.
+На верхнем уровне используйте стандартное ключевое слово `var`. Не указывайте тип, если он не отличается от типа выражения.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -18,8 +17,8 @@ func F() string { return "A" }
 
 ```go
 var _s = F()
-// Since F already states that it returns a string, we don't need to specify
-// the type again.
+// Поскольку F уже указывает, что возвращает строку, нам не нужно
+// указывать тип снова.
 
 func F() string { return "A" }
 ```
@@ -27,8 +26,7 @@ func F() string { return "A" }
 </td></tr>
 </tbody></table>
 
-Specify the type if the type of the expression does not match the desired type
-exactly.
+Указывайте тип, если тип выражения не совпадает точно с желаемым типом.
 
 ```go
 type myError struct{}
@@ -38,5 +36,5 @@ func (myError) Error() string { return "error" }
 func F() myError { return myError{} }
 
 var _e error = F()
-// F returns an object of type myError but we want error.
+// F возвращает объект типа myError, но мы хотим error.
 ```
