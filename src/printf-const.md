@@ -1,12 +1,11 @@
-# Format Strings outside Printf
+# Форматные строки вне Printf
 
-If you declare format strings for `Printf`-style functions outside a string
-literal, make them `const` values.
+Если вы объявляете форматные строки для функций в стиле `Printf` вне строкового литерала, сделайте их значениями `const`.
 
-This helps `go vet` perform static analysis of the format string.
+Это помогает `go vet` выполнять статический анализ форматной строки.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 

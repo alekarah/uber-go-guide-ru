@@ -1,11 +1,9 @@
-# Use Raw String Literals to Avoid Escaping
+# Используйте сырые строковые литералы, чтобы избежать экранирования
 
-Go supports [raw string literals](https://go.dev/ref/spec#raw_string_lit),
-which can span multiple lines and include quotes. Use these to avoid
-hand-escaped strings which are much harder to read.
+Go поддерживает [сырые строковые литералы](https://go.dev/ref/spec#raw_string_lit), которые могут занимать несколько строк и включать кавычки. Используйте их, чтобы избежать ручного экранирования строк, которые гораздо сложнее читать.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 

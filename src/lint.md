@@ -1,17 +1,14 @@
-# Linting
+# Линтинг
 
-More importantly than any "blessed" set of linters, lint consistently across a
-codebase.
+Более важно, чем любой "благословенный" набор линтеров, — линтить последовательно по всей кодовой базе.
 
-We recommend using the following linters at a minimum, because we feel that they
-help to catch the most common issues and also establish a high bar for code
-quality without being unnecessarily prescriptive:
+Мы рекомендуем использовать следующие линтеры как минимум, потому что считаем, что они помогают отловить наиболее распространённые проблемы и устанавливают высокую планку качества кода, не будучи излишне предписывающими:
 
-- [errcheck] to ensure that errors are handled
-- [goimports] to format code and manage imports
-- [revive] to point out common style mistakes
-- [govet] to analyze code for common mistakes
-- [staticcheck] to do various static analysis checks
+- [errcheck] для обеспечения обработки ошибок
+- [goimports] для форматирования кода и управления импортами
+- [revive] для указания на распространённые стилистические ошибки
+- [govet] для анализа кода на наличие распространённых ошибок
+- [staticcheck] для выполнения различных проверок статического анализа
 
   [errcheck]: https://github.com/kisielk/errcheck
   [goimports]: https://pkg.go.dev/golang.org/x/tools/cmd/goimports
@@ -19,21 +16,16 @@ quality without being unnecessarily prescriptive:
   [govet]: https://pkg.go.dev/cmd/vet
   [staticcheck]: https://staticcheck.dev
 
-  > **Note**: [revive] is the modern, faster successor to the now-deprecated [golint].
+  > **Примечание**: [revive] — это современный, более быстрый преемник устаревшего [golint].
 
-## Lint Runners
+## Запускатели линтеров
 
-We recommend [golangci-lint] as the go-to lint runner for Go code, largely due
-to its performance in larger codebases and ability to configure and use many
-canonical linters at once. This repo has an example [.golangci.yml] config file
-with recommended linters and settings.
+Мы рекомендуем [golangci-lint] в качестве основного запускателя линтеров для Go-кода, в основном из-за его производительности в больших кодовых базах и возможности настраивать и использовать множество канонических линтеров одновременно. В этом репозитории есть пример файла конфигурации [.golangci.yml] с рекомендуемыми линтерами и настройками.
 
-golangci-lint has [various linters] available for use. The above linters are
-recommended as a base set, and we encourage teams to add any additional linters
-that make sense for their projects.
+golangci-lint имеет [различные линтеры], доступные для использования. Вышеуказанные линтеры рекомендуются как базовый набор, и мы поощряем команды добавлять любые дополнительные линтеры, которые имеют смысл для их проектов.
 
   [golangci-lint]: https://github.com/golangci/golangci-lint
   [.golangci.yml]: https://github.com/uber-go/guide/blob/master/.golangci.yml
-  [various linters]: https://golangci-lint.run/usage/linters/
+  [различные линтеры]: https://golangci-lint.run/usage/linters/
   [golint]: https://github.com/golang/lint
-  
+
