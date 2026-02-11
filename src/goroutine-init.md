@@ -1,16 +1,11 @@
-# No goroutines in `init()`
+# Никаких горутин в `init()`
 
-`init()` functions should not spawn goroutines.
-See also [Avoid init()](init.md).
+Функции `init()` не должны запускать горутины. См. также [Избегайте init()](init.md).
 
-If a package has need of a background goroutine,
-it must expose an object that is responsible for managing a goroutine's
-lifetime.
-The object must provide a method (`Close`, `Stop`, `Shutdown`, etc)
-that signals the background goroutine to stop, and waits for it to exit.
+Если пакету нужна фоновая горутина, он должен предоставить объект, который отвечает за управление жизненным циклом горутины. Объект должен предоставлять метод (`Close`, `Stop`, `Shutdown` и т.д.), который сигнализирует фоновой горутине остановиться и ждёт её завершения.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -50,8 +45,8 @@ func (w *Worker) doWork() {
   }
 }
 
-// Shutdown tells the worker to stop
-// and waits until it has finished.
+// Shutdown сообщает воркеру остановиться
+// и ждёт, пока он завершится.
 func (w *Worker) Shutdown() {
   close(w.stop)
   <-w.done
@@ -61,18 +56,13 @@ func (w *Worker) Shutdown() {
 </td></tr>
 <tr><td>
 
-Spawns a background goroutine unconditionally when the user exports this package.
-The user has no control over the goroutine or a means of stopping it.
+Запускает фоновую горутину безусловно, когда пользователь экспортирует этот пакет. Пользователь не имеет контроля над горутиной или способа остановить её.
 
 </td><td>
 
-Spawns the worker only if the user requests it.
-Provides a means of shutting down the worker so that the user can free up
-resources used by the worker.
+Запускает воркер только если пользователь запросит это. Предоставляет способ остановить воркер, чтобы пользователь мог освободить ресурсы, используемые воркером.
 
-Note that you should use `WaitGroup`s if the worker manages multiple
-goroutines.
-See [Wait for goroutines to exit](goroutine-exit.md).
+Обратите внимание, что вы должны использовать `WaitGroup`, если воркер управляет несколькими горутинами. См. [Ожидайте завершения горутин](goroutine-exit.md).
 
 </td></tr>
 </tbody></table>
