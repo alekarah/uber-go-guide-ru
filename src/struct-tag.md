@@ -1,11 +1,9 @@
-# Use field tags in marshaled structs
+# Используйте теги полей в маршализуемых структурах
 
-Any struct field that is marshaled into JSON, YAML,
-or other formats that support tag-based field naming
-should be annotated with the relevant tag.
+Любое поле структуры, которое маршализуется в JSON, YAML или другие форматы, поддерживающие именование полей на основе тегов, должно быть аннотировано соответствующим тегом.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -27,7 +25,7 @@ bytes, err := json.Marshal(Stock{
 type Stock struct {
   Price int    `json:"price"`
   Name  string `json:"name"`
-  // Safe to rename Name to Symbol.
+  // Безопасно переименовать Name в Symbol.
 }
 
 bytes, err := json.Marshal(Stock{
@@ -39,9 +37,5 @@ bytes, err := json.Marshal(Stock{
 </td></tr>
 </tbody></table>
 
-Rationale:
-The serialized form of the structure is a contract between different systems.
-Changes to the structure of the serialized form--including field names--break
-this contract. Specifying field names inside tags makes the contract explicit,
-and it guards against accidentally breaking the contract by refactoring or
-renaming fields.
+Обоснование:
+Сериализованная форма структуры — это контракт между различными системами. Изменения в структуре сериализованной формы — включая имена полей — нарушают этот контракт. Указание имён полей внутри тегов делает контракт явным и защищает от случайного нарушения контракта при рефакторинге или переименовании полей.

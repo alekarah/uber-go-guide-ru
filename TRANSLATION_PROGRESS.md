@@ -1,8 +1,8 @@
 # Прогресс перевода
 
-**Статус:** 26/58 файлов переведено (44.8%)
+**Статус:** 32/58 файлов переведено (55.2%)
 
-> Последнее обновление: 2026-02-10
+> Последнее обновление: 2026-02-11
 
 ---
 
@@ -35,34 +35,35 @@
 
 ---
 
-## ✅ Переведённые файлы
+## 📋 Файлы для перевода
 
-- [x] `intro.md` — Введение
-- [x] `panic.md` — Не используйте panic
-- [x] `interface-pointer.md` — Указатели на интерфейсы
-- [x] `interface-compliance.md` — Проверка соответствия интерфейсу
-- [x] `interface-receiver.md` — Приёмники и интерфейсы
-- [x] `error-type.md` — Типы ошибок
-- [x] `error-wrap.md` — Оборачивание ошибок
-- [x] `error-name.md` — Именование ошибок
-- [x] `error-once.md` — Обрабатывайте ошибки только один раз
-- [x] `mutex-zero-value.md` — Мьютексы с нулевым значением валидны
-- [x] `channel-size.md` — Размер канала — один или ноль
-- [x] `goroutine-forget.md` — Не запускайте горутины без контроля
-- [x] `goroutine-exit.md` — Ожидайте завершения горутин
-- [x] `goroutine-init.md` — Никаких горутин в init()
-- [x] `type-assert.md` — Обрабатывайте ошибки приведения типов
-- [x] `enum-start.md` — Начинайте enum с единицы
-- [x] `time.md` — Используйте "time" для работы со временем
-- [x] `atomic.md` — Используйте go.uber.org/atomic
-- [x] `global-mut.md` — Избегайте изменяемых глобальных переменных
-- [x] `embed-public.md` — Избегайте встраивания типов в публичные структуры
-- [x] `builtin-name.md` — Избегайте использования встроенных имён
-- [x] `container-copy.md` — Копирование слайсов и map на границах
-- [x] `defer-clean.md` — Defer для очистки ресурсов
-- [x] `init.md` — Избегайте init()
-- [x] `exit-main.md` — Выход из программы в Main
-- [x] `exit-once.md` — Выходите один раз
+- [ ] `consistency.md`
+- [ ] `container-capacity.md`
+- [ ] `decl-group.md`
+- [ ] `else-unnecessary.md`
+- [ ] `functional-option.md`
+- [ ] `function-name.md`
+- [ ] `function-order.md`
+- [ ] `global-decl.md`
+- [ ] `global-name.md`
+- [ ] `import-alias.md`
+- [ ] `import-group.md`
+- [ ] `line-length.md`
+- [ ] `lint.md`
+- [ ] `map-init.md`
+- [ ] `nest-less.md`
+- [ ] `package-name.md`
+- [ ] `param-naked.md`
+- [ ] `performance.md`
+- [ ] `printf-const.md`
+- [ ] `printf-name.md`
+- [ ] `slice-nil.md`
+- [ ] `strconv.md`
+- [ ] `string-byte-slice.md`
+- [ ] `string-escape.md`
+- [ ] `test-table.md`
+- [ ] `var-decl.md`
+- [ ] `var-scope.md`
 
 ---
 

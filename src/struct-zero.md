@@ -1,10 +1,9 @@
-# Use `var` for Zero Value Structs
+# Используйте `var` для структур с нулевыми значениями
 
-When all the fields of a struct are omitted in a declaration, use the `var`
-form to declare the struct.
+Когда все поля структуры опущены в объявлении, используйте форму `var` для объявления структуры.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -21,8 +20,6 @@ var user User
 </td></tr>
 </tbody></table>
 
-This differentiates zero valued structs from those with non-zero fields
-similar to the distinction created for [map initialization](map-init.md), and matches how
-we prefer to [declare empty slices].
+Это отличает структуры с нулевыми значениями от тех, у которых есть ненулевые поля, подобно различию, созданному для [инициализации map](map-init.md), и соответствует тому, как мы предпочитаем [объявлять пустые слайсы].
 
-  [declare empty slices]: https://go.dev/wiki/CodeReviewComments#declaring-empty-slices
+  [объявлять пустые слайсы]: https://go.dev/wiki/CodeReviewComments#declaring-empty-slices

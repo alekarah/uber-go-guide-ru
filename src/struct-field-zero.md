@@ -1,11 +1,9 @@
-# Omit Zero Value Fields in Structs
+# Опускайте поля с нулевыми значениями в структурах
 
-When initializing structs with field names, omit fields that have zero values
-unless they provide meaningful context. Otherwise, let Go set these to zero
-values automatically.
+При инициализации структур с именами полей опускайте поля, которые имеют нулевые значения, если они не предоставляют значимый контекст. В противном случае позвольте Go установить эти значения в ноль автоматически.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -30,12 +28,9 @@ user := User{
 </td></tr>
 </tbody></table>
 
-This helps reduce noise for readers by omitting values that are default in
-that context. Only meaningful values are specified.
+Это помогает уменьшить шум для читателей, опуская значения, которые являются значениями по умолчанию в данном контексте. Указываются только значимые значения.
 
-Include zero values where field names provide meaningful context. For example,
-test cases in [Test Tables](test-table.md) can benefit from names of fields
-even when they are zero-valued.
+Включайте нулевые значения там, где имена полей предоставляют значимый контекст. Например, тестовые случаи в [тестовых таблицах](test-table.md) могут выиграть от имён полей, даже когда они имеют нулевые значения.
 
 ```go
 tests := []struct{
