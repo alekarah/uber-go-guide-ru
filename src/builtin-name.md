@@ -1,29 +1,25 @@
-# Avoid Using Built-In Names
+# Избегайте использования встроенных имён
 
-The Go [language specification] outlines several built-in,
-[predeclared identifiers] that should not be used as names within Go programs.
+[Спецификация языка] Go описывает несколько встроенных [предопределённых идентификаторов], которые не должны использоваться в качестве имён в программах на Go.
 
-Depending on context, reusing these identifiers as names will either shadow
-the original within the current lexical scope (and any nested scopes) or make
-affected code confusing. In the best case, the compiler will complain; in the
-worst case, such code may introduce latent, hard-to-grep bugs.
+В зависимости от контекста, повторное использование этих идентификаторов в качестве имён либо затенит оригинал в текущей лексической области (и во всех вложенных областях), либо сделает затронутый код запутанным. В лучшем случае компилятор выдаст ошибку; в худшем случае такой код может внести скрытые, трудно обнаруживаемые баги.
 
-  [language specification]: https://go.dev/ref/spec
-  [predeclared identifiers]: https://go.dev/ref/spec#Predeclared_identifiers
+  [Спецификация языка]: https://go.dev/ref/spec
+  [предопределённых идентификаторов]: https://go.dev/ref/spec#Predeclared_identifiers
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
 ```go
 var error string
-// `error` shadows the builtin
+// `error` затеняет встроенный
 
-// or
+// или
 
 func handleErrorMessage(error string) {
-    // `error` shadows the builtin
+    // `error` затеняет встроенный
 }
 ```
 
@@ -31,12 +27,12 @@ func handleErrorMessage(error string) {
 
 ```go
 var errorMessage string
-// `error` refers to the builtin
+// `error` ссылается на встроенный
 
-// or
+// или
 
 func handleErrorMessage(msg string) {
-    // `error` refers to the builtin
+    // `error` ссылается на встроенный
 }
 ```
 
@@ -45,23 +41,23 @@ func handleErrorMessage(msg string) {
 
 ```go
 type Foo struct {
-    // While these fields technically don't
-    // constitute shadowing, grepping for
-    // `error` or `string` strings is now
-    // ambiguous.
+    // Хотя эти поля технически не
+    // создают затенение, grep поиск
+    // строк `error` или `string` теперь
+    // неоднозначен.
     error  error
     string string
 }
 
 func (f Foo) Error() error {
-    // `error` and `f.error` are
-    // visually similar
+    // `error` и `f.error` визуально
+    // похожи
     return f.error
 }
 
 func (f Foo) String() string {
-    // `string` and `f.string` are
-    // visually similar
+    // `string` и `f.string` визуально
+    // похожи
     return f.string
 }
 ```
@@ -70,8 +66,8 @@ func (f Foo) String() string {
 
 ```go
 type Foo struct {
-    // `error` and `string` strings are
-    // now unambiguous.
+    // Строки `error` и `string` теперь
+    // однозначны.
     err error
     str string
 }
@@ -88,6 +84,4 @@ func (f Foo) String() string {
 </td></tr>
 </tbody></table>
 
-Note that the compiler will not generate errors when using predeclared
-identifiers, but tools such as `go vet` should correctly point out these and
-other cases of shadowing.
+Обратите внимание, что компилятор не выдаст ошибки при использовании предопределённых идентификаторов, но такие инструменты, как `go vet`, должны правильно указывать на эти и другие случаи затенения.
