@@ -1,3 +1,3 @@
-# Performance
+# Производительность
 
-Performance-specific guidelines apply only to the hot path.
+Рекомендации по производительности применяются только к горячему пути (hot path).

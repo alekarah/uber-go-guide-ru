@@ -1,19 +1,16 @@
-# Initializing Maps
+# Инициализация map
 
-Prefer `make(..)` for empty maps, and maps populated
-programmatically. This makes map initialization visually
-distinct from declaration, and it makes it easy to add size
-hints later if available.
+Предпочитайте `make(..)` для пустых map и map, заполняемых программно. Это делает инициализацию map визуально отличной от объявления, и упрощает добавление подсказок о размере позже, если они доступны.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
 ```go
 var (
-  // m1 is safe to read and write;
-  // m2 will panic on writes.
+  // m1 безопасно для чтения и записи;
+  // m2 вызовет panic при записи.
   m1 = map[T1]T2{}
   m2 map[T1]T2
 )
@@ -23,8 +20,8 @@ var (
 
 ```go
 var (
-  // m1 is safe to read and write;
-  // m2 will panic on writes.
+  // m1 безопасно для чтения и записи;
+  // m2 вызовет panic при записи.
   m1 = make(map[T1]T2)
   m2 map[T1]T2
 )
@@ -33,25 +30,21 @@ var (
 </td></tr>
 <tr><td>
 
-Declaration and initialization are visually similar.
+Объявление и инициализация визуально похожи.
 
 </td><td>
 
-Declaration and initialization are visually distinct.
+Объявление и инициализация визуально различны.
 
 </td></tr>
 </tbody></table>
 
-Where possible, provide capacity hints when initializing
-maps with `make()`. See
-[Specifying Map Capacity Hints](container-capacity.md#specifying-map-capacity-hints)
-for more information.
+Где возможно, предоставляйте подсказки о ёмкости при инициализации map с помощью `make()`. См. [Указание подсказок о ёмкости map](container-capacity.md#указание-подсказок-о-ёмкости-map) для дополнительной информации.
 
-On the other hand, if the map holds a fixed list of elements,
-use map literals to initialize the map.
+С другой стороны, если map содержит фиксированный список элементов, используйте литералы map для инициализации map.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
@@ -75,6 +68,4 @@ m := map[T1]T2{
 </td></tr>
 </tbody></table>
 
-The basic rule of thumb is to use map literals when adding a fixed set of
-elements at initialization time, otherwise use `make` (and specify a size hint
-if available).
+Основное практическое правило — использовать литералы map при добавлении фиксированного набора элементов во время инициализации, в противном случае используйте `make` (и указывайте подсказку о размере, если она доступна).

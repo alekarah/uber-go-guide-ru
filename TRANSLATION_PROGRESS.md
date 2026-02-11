@@ -1,6 +1,6 @@
 # Прогресс перевода
 
-**Статус:** 32/58 файлов переведено (55.2%)
+**Статус:** 38/58 файлов переведено (65.5%)
 
 > Последнее обновление: 2026-02-11
 
@@ -38,7 +38,6 @@
 ## 📋 Файлы для перевода
 
 - [ ] `consistency.md`
-- [ ] `container-capacity.md`
 - [ ] `decl-group.md`
 - [ ] `else-unnecessary.md`
 - [ ] `functional-option.md`
@@ -50,16 +49,11 @@
 - [ ] `import-group.md`
 - [ ] `line-length.md`
 - [ ] `lint.md`
-- [ ] `map-init.md`
 - [ ] `nest-less.md`
 - [ ] `package-name.md`
 - [ ] `param-naked.md`
-- [ ] `performance.md`
 - [ ] `printf-const.md`
 - [ ] `printf-name.md`
-- [ ] `slice-nil.md`
-- [ ] `strconv.md`
-- [ ] `string-byte-slice.md`
 - [ ] `string-escape.md`
 - [ ] `test-table.md`
 - [ ] `var-decl.md`

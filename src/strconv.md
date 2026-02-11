@@ -1,10 +1,9 @@
-# Prefer strconv over fmt
+# Предпочитайте strconv вместо fmt
 
-When converting primitives to/from strings, `strconv` is faster than
-`fmt`.
+При конвертации примитивов в строки и обратно, `strconv` быстрее, чем `fmt`.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 

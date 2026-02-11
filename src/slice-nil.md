@@ -1,12 +1,11 @@
-# nil is a valid slice
+# nil является валидным слайсом
 
-`nil` is a valid slice of length 0. This means that,
+`nil` является валидным слайсом длиной 0. Это означает, что:
 
-- You should not return a slice of length zero explicitly. Return `nil`
-  instead.
+- Вы не должны возвращать слайс нулевой длины явно. Возвращайте `nil` вместо этого.
 
   <table>
-  <thead><tr><th>Bad</th><th>Good</th></tr></thead>
+  <thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
   <tbody>
   <tr><td>
 
@@ -27,11 +26,10 @@
   </td></tr>
   </tbody></table>
 
-- To check if a slice is empty, always use `len(s) == 0`. Do not check for
-  `nil`.
+- Чтобы проверить, пуст ли слайс, всегда используйте `len(s) == 0`. Не проверяйте на `nil`.
 
   <table>
-  <thead><tr><th>Bad</th><th>Good</th></tr></thead>
+  <thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
   <tbody>
   <tr><td>
 
@@ -52,17 +50,16 @@
   </td></tr>
   </tbody></table>
 
-- The zero value (a slice declared with `var`) is usable immediately without
-  `make()`.
+- Нулевое значение (слайс, объявленный с `var`) можно использовать немедленно без `make()`.
 
   <table>
-  <thead><tr><th>Bad</th><th>Good</th></tr></thead>
+  <thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
   <tbody>
   <tr><td>
 
   ```go
   nums := []int{}
-  // or, nums := make([]int)
+  // или, nums := make([]int)
 
   if add1 {
     nums = append(nums, 1)
@@ -90,6 +87,4 @@
   </td></tr>
   </tbody></table>
 
-Remember that, while it is a valid slice, a nil slice is not equivalent to an
-allocated slice of length 0 - one is nil and the other is not - and the two may
-be treated differently in different situations (such as serialization).
+Помните, что хотя это валидный слайс, nil слайс не эквивалентен выделенному слайсу длиной 0 — один является nil, а другой нет — и эти два могут обрабатываться по-разному в различных ситуациях (например, при сериализации).

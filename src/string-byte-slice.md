@@ -1,10 +1,9 @@
-# Avoid repeated string-to-byte conversions
+# Избегайте повторных конвертаций строки в байты
 
-Do not create byte slices from a fixed string repeatedly. Instead, perform the
-conversion once and capture the result.
+Не создавайте слайсы байтов из фиксированной строки повторно. Вместо этого выполните конвертацию один раз и сохраните результат.
 
 <table>
-<thead><tr><th>Bad</th><th>Good</th></tr></thead>
+<thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
 <tr><td>
 
