@@ -7,6 +7,8 @@
   [go.uber.org/atomic]: https://pkg.go.dev/go.uber.org/atomic
   [sync/atomic]: https://pkg.go.dev/sync/atomic
 
+Но не забывайте что в стандартную библиотеку уже добавили [Bool](https://pkg.go.dev/sync/atomic#Bool) и лучше пользоваться им.
+
 <table>
 <thead><tr><th>Плохо</th><th>Хорошо</th></tr></thead>
 <tbody>
