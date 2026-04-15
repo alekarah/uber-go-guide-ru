@@ -17,7 +17,7 @@ type foo struct {
   running int32  // atomic
 }
 
-func (f* foo) start() {
+func (f *foo) start() {
   if atomic.SwapInt32(&f.running, 1) == 1 {
      // уже запущен…
      return

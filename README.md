@@ -2,7 +2,7 @@
 
 > 🇷🇺 **Актуальный и поддерживаемый** русский перевод официального Uber Go Style Guide.
 >
-> 📌 Перевод основан на версии оригинала: [uber-go/guide](https://github.com/uber-go/guide) @ `e2c8a0ed`
+> 📌 Перевод основан на версии оригинала: [uber-go/guide](https://github.com/uber-go/guide) @ `1d60a91`
 
 ---
 
